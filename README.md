@@ -12,3 +12,13 @@ own objects and could not add my own objects. For example, I want to monitor a s
 * Supports Highly customized to extend your application
 * Supports https
 * The SSL library can select OpenSSL and mbedtls
+
+## **[Example](https://github.com/zhaojh329/evmongoose/blob/master/example.c)**
+
+## How To Compile
+    git clone https://github.com/zhaojh329/evmongoose.git
+    cd evmongoose
+    mkdir build
+    cd build
+    cmake ..
+    make
