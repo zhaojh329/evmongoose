@@ -10,6 +10,7 @@ Evmongoose是一个API接口友好和可伸缩的HTTP服务器库，它基于mon
 * 高度的可定制化
 * 支持HTTPS
 * SSL库可选：OpenSSL和mbedtls，对于存储苛刻的系统可选择mbedtls
+* 支持Lua（开发中）
 
 ## **[示例程序](https://github.com/zhaojh329/evmongoose/blob/master/example.c)**
 
@@ -20,3 +21,7 @@ Evmongoose是一个API接口友好和可伸缩的HTTP服务器库，它基于mon
     cd build
     cmake ..
     make
+	
+## 感谢以下项目提供帮助
+* [mongoose](https://github.com/cesanta/mongoose)
+* [libev](https://github.com/kindy/libev)

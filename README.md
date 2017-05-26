@@ -1,5 +1,4 @@
-# Evmongoose
-**[中文介绍](https://github.com/zhaojh329/evmongoose/blob/master/README_ZH.md)**
+# Evmongoose([中文](https://github.com/zhaojh329/evmongoose/blob/master/README_ZH.md))
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
 
@@ -12,8 +11,9 @@ own objects and could not add my own objects. For example, I want to monitor a s
 * Supports Highly customized to extend your application
 * Supports https
 * The SSL library can select OpenSSL and mbedtls
+* Supports Lua(In development)
 
-## **[Example](https://github.com/zhaojh329/evmongoose/blob/master/example.c)**
+## [Example](https://github.com/zhaojh329/evmongoose/blob/master/example.c)
 
 ## How To Compile
     git clone https://github.com/zhaojh329/evmongoose.git
@@ -22,3 +22,7 @@ own objects and could not add my own objects. For example, I want to monitor a s
     cd build
     cmake ..
     make
+    
+## Thanks for the following project
+* [mongoose](https://github.com/cesanta/mongoose)
+* [libev](https://github.com/kindy/libev)
