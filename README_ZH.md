@@ -8,7 +8,7 @@ Evmongoose是一个API接口友好和可伸缩的HTTP服务器库，它基于mon
 
 # 特性
 * 新特性
-	- 使用libev编程
+    - 使用libev编程
 	- 高度的可定制化
 	- Lua（开发中）
 
@@ -59,6 +59,19 @@ Evmongoose是一个API接口友好和可伸缩的HTTP服务器库，它基于mon
 Evmongoose并没有改变mongoose和libev的API用法，所以请参考
 [mongoose](https://docs.cesanta.com/mongoose/master)
 和libev的API参考手册。只有一点需要注意，使用evmongoose时不再调用mg_mgr_poll。
+
+# How To Contribute
+
+Evmongoose使用github托管其源代码，贡献代码使用github的PR(Pull Request)的流程，十分的强大与便利:
+
+1. [创建 Issue](https://github.com/zhaojh329/evmongoose/issues/new) - 对于较大的
+	改动(如新功能，大型重构等)最好先开issue讨论一下，较小的improvement(如文档改进，bugfix等)直接发PR即可
+2. Fork [apfree_wifidog](https://github.com/zhaojh329/evmongoose) - 点击右上角**Fork**按钮
+3. Clone你自己的fork: ```git clone https://github.com/$userid/evmongoose.git```
+4. 在**dev**修改并将修改push到你的fork上
+5. 创建从你的fork的**dev**分支到主项目的**dev**分支的[Pull Request] -  
+	[在此](https://github.com/zhaojh329/evmongoose)点击**Compare & pull request**
+6. 等待review, 需要继续改进，或者被Merge!
 	
 ## 感谢以下项目提供帮助
 * [mongoose](https://github.com/cesanta/mongoose)
