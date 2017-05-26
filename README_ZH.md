@@ -66,3 +66,5 @@ Evmongoose并没有改变mongoose和libev的API用法，所以请参考
 
 # 技术交流
 QQ群：153530783
+
+# 如果该项目对您有帮助，请随手star，谢谢！
