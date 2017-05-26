@@ -17,6 +17,7 @@ Evmongoose是一个API接口友好和可伸缩的HTTP服务器库，它基于mon
 	- SSL库可选：OpenSSL和mbedtls，对于存储苛刻的系统可选择mbedtls
 	- DNS客户端，DNS服务器，异步DNS解析
 	- WebSocket客户端，WebSocket服务器
+	- Url重写
 	- ...
 
 ## [示例程序](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web.c)
@@ -60,7 +61,7 @@ Evmongoose并没有改变mongoose和libev的API用法，所以请参考
 [mongoose](https://docs.cesanta.com/mongoose/master)
 和libev的API参考手册。只有一点需要注意，使用evmongoose时不再调用mg_mgr_poll。
 
-# How To Contribute
+# 贡献代码
 
 Evmongoose使用github托管其源代码，贡献代码使用github的PR(Pull Request)的流程，十分的强大与便利:
 
