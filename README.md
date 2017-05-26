@@ -64,3 +64,5 @@ Only one thing to notice is that mg_mgr_poll is no longer invoked when using evm
 # Thanks for the following project
 * [mongoose](https://github.com/cesanta/mongoose)
 * [libev](https://github.com/kindy/libev)
+
+# If the project is helpful to you, please do not hesitate to star. Thank you!
