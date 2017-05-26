@@ -18,6 +18,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	switch (ev) {
 	case MG_EV_HTTP_REQUEST:
 		if (is_equal(&hm->uri, &test_uri)) {
+			printf("Request test...\n");
 			mg_printf(nc, "HTTP/1.1 200 OK\r\n"
 						  "Content-Length: %lu\r\n\r\n"
 						  "%s", strlen(buf), buf);
