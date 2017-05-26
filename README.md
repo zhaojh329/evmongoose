@@ -8,7 +8,7 @@ library that was satisfied with the event based framework, and those HTTP server
 own objects and could not add my own objects. For example, I want to monitor a signal or a file through the event.
 
 # Features
-* New from Evmongoose
+* New from evmongoose
 	- Using libev programming
 	- Highly customized to extend your application based on libev
 	- Lua(In development)
