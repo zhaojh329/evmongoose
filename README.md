@@ -9,7 +9,7 @@ own objects and could not add my own objects. For example, I want to monitor a s
 
 # Features
 * New from evmongoose
-	- Using libev programming
+    - Using libev programming
 	- Highly customized to extend your application based on libev
 	- Lua(In development)
 
@@ -60,7 +60,13 @@ own objects and could not add my own objects. For example, I want to monitor a s
 Evmongoose dose not change the usage of API in mongoose and libev, 
 so please refer to the API Manual of [mongoose](https://docs.cesanta.com/mongoose/master) and libev.
 Only one thing to notice is that mg_mgr_poll is no longer invoked when using evmongoose.
-    
+
+# How To Contribute
+Feel free to create issues or pull-requests if you have any problems.
+
+**Please read [contributing.md](https://github.com/zhaojh329/evmongoose/blob/master/contributing.md)
+before pushing any changes.**
+
 # Thanks for the following project
 * [mongoose](https://github.com/cesanta/mongoose)
 * [libev](https://github.com/kindy/libev)
