@@ -12,15 +12,46 @@ Evmongoose是一个API接口友好和可伸缩的HTTP服务器库，它基于mon
 * SSL库可选：OpenSSL和mbedtls，对于存储苛刻的系统可选择mbedtls
 * 支持Lua（开发中）
 
-## [示例程序](https://github.com/zhaojh329/evmongoose/blob/master/example.c)
+## [示例程序](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web.c)
 
-## 编译
+# 编译
+## 在Ubuntu上运行
+### 安装依赖库
+    sudo apt install libev-dev libssl-dev
+    
+### 安装evmongoose（默认支持HTTPS）
     git clone https://github.com/zhaojh329/evmongoose.git
     cd evmongoose
     mkdir build
     cd build
     cmake ..
     make
+
+### 安装evmongoose（禁止HTTPS）
+    git clone https://github.com/zhaojh329/evmongoose.git
+    cd evmongoose
+    mkdir build
+    cd build
+    cmake .. -DHTTPS_SUPPORT=OFF
+    make
+
+## OpenWRT/LEDE
+	git clone https://github.com/zhaojh329/evmongoose.git
+	cp evmongoose/openwrt/ openwrt_dir/package/evmongoose -r
+	cd openwrt_dir
+	make menuconfig
+	Libraries  --->
+	    Networking  --->
+	        <*> evmongoose
+	            Configuration  --->
+	                SSl (mbedtls)  --->
+	
+	make package/evmongoose/compile V=s
+	
+# API参考手册
+Evmongoose并没有改变mongoose和libev的API用法，所以请参考
+[mongoose](https://docs.cesanta.com/mongoose/master)
+和libev的API参考手册。只有一点需要注意，使用evmongoose时不再调用mg_mgr_poll。
 	
 ## 感谢以下项目提供帮助
 * [mongoose](https://github.com/cesanta/mongoose)
