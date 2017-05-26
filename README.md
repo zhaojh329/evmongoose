@@ -15,7 +15,7 @@ own objects and could not add my own objects. For example, I want to monitor a s
 
 * Inherited from mongoose
 	- HTTP client, HTTP server
-	- The SSL library can select OpenSSL and mbedtls
+	- Alternative openssl and mbedtls
 	- DNS client, DNS server, async DNS resolver
 	- WebSocket client, WebSocket server
 	- ...
