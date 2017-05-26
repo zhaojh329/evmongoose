@@ -56,3 +56,6 @@ Evmongoose并没有改变mongoose和libev的API用法，所以请参考
 ## 感谢以下项目提供帮助
 * [mongoose](https://github.com/cesanta/mongoose)
 * [libev](https://github.com/kindy/libev)
+
+# 技术交流
+QQ群：153530783
