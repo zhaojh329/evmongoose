@@ -22,8 +22,8 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 		if (is_equal(&hm->uri, &test_uri)) {
 			printf("Request test...\n");
 			mg_printf(nc, "HTTP/1.1 200 OK\r\n"
-						  "Content-Length: %lu\r\n\r\n"
-						  "%s", strlen(buf), buf);
+						  "Content-Length: %d\r\n\r\n"
+						  "%s", (int)strlen(buf), buf);
 		} else {
 			mg_serve_http(nc, hm, s_http_server_opts); /* Serve static content */
 		}
