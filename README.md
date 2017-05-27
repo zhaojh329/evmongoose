@@ -2,24 +2,29 @@
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
 
-Evmongoose is an api friendly and scalable HTTP server library based on mongoose and libev. Evmongoose supports
-highly customized to extend your application. Before I started this project, I had never found a HTTP server
-library that was satisfied with the event based framework, and those HTTP server libraries could only loop it's
-own objects and could not add my own objects. For example, I want to monitor a signal or a file through the event.
+Evmongoose is an asynchronous, api friendly network library. It is based on [mongoose](https://github.com/cesanta/mongoose)
+and [libev](https://github.com/kindy/libev) implementation.
+
+Evmongoose supports highly customized to extend your application. Before I started this project, I had never found a HTTP server
+library that was satisfied with the event based framework, and those HTTP server libraries could only loop it'sown objects and 
+could not add my own objects. For example, I want to monitor a signal or a file through the event.
 
 # Features
 * New from evmongoose
-    - Using libev programming
+    - Using libev programming 
 	- Highly customized to extend your application based on libev
 	- Lua(In development)
 
 * Inherited from mongoose
-	- HTTP client, HTTP server
+	- plain TCP, plain UDP, SSL/TLS (over TCP, one-way or two-way)
 	- Alternative openssl and mbedtls
-	- DNS client, DNS server, async DNS resolver
+	- HTTP client, HTTP server
+	- Proxy
 	- WebSocket client, WebSocket server
+	- MQTT client, MQTT broker
+	- CoAP client, CoAP server
+	- DNS client, DNS server, async DNS resolver
 	- Url Rewrite
-	- ...
 
 # Example
 * [simplest web](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web.c)
