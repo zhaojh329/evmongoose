@@ -20,7 +20,11 @@ Evmongoose是一个API接口友好和可伸缩的HTTP服务器库，它基于mon
 	- Url重写
 	- ...
 
-## [示例程序](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web.c)
+## 示例程序
+* [simplest web](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web.c)
+* [simplest web on ssl](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web_ssl.c)
+* [http client](https://github.com/zhaojh329/evmongoose/blob/master/example/http_client.c)
+* [async DNS resolver](https://github.com/zhaojh329/evmongoose/blob/master/example/async_dns_resolver.c)
 
 # 编译
 ## 在Ubuntu上运行
