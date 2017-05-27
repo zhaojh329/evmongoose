@@ -23,9 +23,9 @@
 #ifndef CS_MONGOOSE_SRC_COMMON_H_
 #define CS_MONGOOSE_SRC_COMMON_H_
 
-#include <ev.h>
-
 #define MG_VERSION "6.7"
+
+#include <ev.h>
 
 /* Local tweaks, applied before any of Mongoose's own headers. */
 #ifdef MG_LOCALS
@@ -3272,6 +3272,7 @@ struct mg_connection {
   ev_io watcher_r;					/* Io watcher for read */
   ev_io watcher_w;					/* Io watcher for write */
   /* append by zjh end */
+
   sock_t sock; /* Socket to the remote peer */
   int err;
   union socket_address sa; /* Remote peer address */

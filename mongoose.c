@@ -161,6 +161,9 @@ MG_INTERNAL void mg_ws_handshake(struct mg_connection *nc,
 #endif
 #endif /* MG_ENABLE_HTTP */
 
+MG_INTERNAL void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents);
+MG_INTERNAL void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents);
+
 MG_INTERNAL int mg_get_errno(void);
 
 MG_INTERNAL void mg_close_conn(struct mg_connection *conn);
@@ -3215,6 +3218,16 @@ static int mg_accept_conn(struct mg_connection *lc) {
   {
     mg_if_accept_tcp_cb(nc, &sa, sa_len);
   }
+
+  /* >>> append by zjh */
+  ev_io_init(&nc->watcher_r, ev_read_cb, nc->sock, EV_READ);
+  nc->watcher_r.data = nc;
+  ev_io_start(EV_DEFAULT, &nc->watcher_r);
+
+  ev_io_init(&nc->watcher_w, ev_write_cb, nc->sock, EV_WRITE);
+  nc->watcher_w.data = nc;
+  /* <<< append by zjh */
+
   return 1;
 }
 
@@ -3530,47 +3543,11 @@ static void mg_mgr_handle_ctl_sock(struct mg_mgr *mgr) {
 }
 #endif
 
-/* >>> append by zjh */
-static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
-{
-	struct mg_connection *nc = (struct mg_connection *)w->data;
-	mg_mgr_handle_conn(nc, _MG_F_FD_CAN_WRITE, mg_time());
-
-	if (nc->send_mbuf.len == 0)
-		ev_io_stop(EV_DEFAULT, &nc->watcher_w);
-}
-
-static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
-{
-	struct mg_connection *nc = (struct mg_connection *)w->data;
-
-	mg_mgr_handle_conn(nc, _MG_F_FD_CAN_READ, mg_time());
-	
-	if ((nc->flags & MG_F_CLOSE_IMMEDIATELY) ||	(nc->send_mbuf.len == 0 && (nc->flags & MG_F_SEND_AND_CLOSE))) {
-		ev_io_stop(EV_DEFAULT, &nc->watcher_r);
-		ev_io_stop(EV_DEFAULT, &nc->watcher_w);
-		mg_close_conn(nc);
-		return;
-	}
-
-	ev_io_start(EV_DEFAULT, &nc->watcher_w);
-}
-/* <<< append by zjh */
-
 /* Associate a socket to a connection. */
 void mg_socket_if_sock_set(struct mg_connection *nc, sock_t sock) {
   mg_set_non_blocking_mode(sock);
   mg_set_close_on_exec(sock);
   nc->sock = sock;
-  
-  /* >>> append by zjh */
-  ev_io_init(&nc->watcher_r, ev_read_cb, nc->sock, EV_READ);
-  nc->watcher_r.data = nc;
-  ev_io_start(EV_DEFAULT, &nc->watcher_r);
-  
-  ev_io_init(&nc->watcher_w, ev_write_cb, nc->sock, EV_WRITE);
-  nc->watcher_w.data = nc;
-  /* <<< append by zjh */
   DBG(("%p %d", nc, sock));
 }
 
@@ -3589,7 +3566,14 @@ void mg_socket_if_free(struct mg_iface *iface) {
 }
 
 void mg_socket_if_add_conn(struct mg_connection *nc) {
-  (void) nc;
+  /* >>> append by zjh */
+  ev_io_init(&nc->watcher_r, ev_read_cb, nc->sock, EV_READ);
+  nc->watcher_r.data = nc;
+  ev_io_start(EV_DEFAULT, &nc->watcher_r);
+  
+  ev_io_init(&nc->watcher_w, ev_write_cb, nc->sock, EV_WRITE);
+  nc->watcher_w.data = nc;
+  /* <<< append by zjh */
 }
 
 void mg_socket_if_remove_conn(struct mg_connection *nc) {
@@ -3608,6 +3592,33 @@ void mg_add_to_set(sock_t sock, fd_set *set, sock_t *max_fd) {
     }
   }
 }
+
+/* >>> append by zjh */
+MG_INTERNAL void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
+{
+	struct mg_connection *nc = (struct mg_connection *)w->data;
+	mg_mgr_handle_conn(nc, _MG_F_FD_CAN_WRITE, mg_time());
+
+	if (nc->send_mbuf.len == 0)
+		ev_io_stop(EV_DEFAULT, &nc->watcher_w);
+}
+
+MG_INTERNAL void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
+{
+	struct mg_connection *nc = (struct mg_connection *)w->data;
+
+	mg_mgr_handle_conn(nc, _MG_F_FD_CAN_READ, mg_time());
+	
+	if ((nc->flags & MG_F_CLOSE_IMMEDIATELY) ||	(nc->send_mbuf.len == 0 && (nc->flags & MG_F_SEND_AND_CLOSE))) {
+		ev_io_stop(EV_DEFAULT, &nc->watcher_r);
+		ev_io_stop(EV_DEFAULT, &nc->watcher_w);
+		mg_close_conn(nc);
+		return;
+	}
+
+	ev_io_start(EV_DEFAULT, &nc->watcher_w);
+}
+/* <<< append by zjh */
 
 time_t mg_socket_if_poll(struct mg_iface *iface, int timeout_ms) {
   struct mg_mgr *mgr = iface->mgr;
