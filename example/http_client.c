@@ -1,6 +1,5 @@
 #include <mongoose.h>
 
-static int s_exit_flag = 0;
 static int s_show_headers = 0;
 static const char *s_show_headers_opt = "--show-headers";
 
@@ -10,10 +9,8 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 
 	switch (ev) {
 	case MG_EV_CONNECT:
-		if (*(int *) ev_data != 0) {
+		if (*(int *) ev_data != 0)
 			fprintf(stderr, "connect() failed: %s\n", strerror(*(int *) ev_data));
-			s_exit_flag = 1;
-		}
 		break;
 	case MG_EV_HTTP_REPLY:
 		nc->flags |= MG_F_CLOSE_IMMEDIATELY;
@@ -23,13 +20,9 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 			fwrite(hm->body.p, 1, hm->body.len, stdout);
 		}
 		putchar('\n');
-		s_exit_flag = 1;
 		break;
 	case MG_EV_CLOSE:
-		if (s_exit_flag == 0) {
 			printf("Server closed connection\n");
-			s_exit_flag = 1;
-		}
 		break;
 	default:
 		break;
