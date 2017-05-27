@@ -3202,6 +3202,10 @@ void mg_socket_if_destroy_conn(struct mg_connection *nc) {
     /* Only close outgoing UDP sockets or listeners. */
     if (nc->listener == NULL) closesocket(nc->sock);
   }
+
+  ev_io_stop(nc->mgr->loop, &nc->watcher_r);
+  ev_io_stop(nc->mgr->loop, &nc->watcher_w);
+  
   nc->sock = INVALID_SOCKET;
 }
 
@@ -3613,8 +3617,10 @@ MG_INTERNAL void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 	struct mg_connection *nc = (struct mg_connection *)w->data;
 	mg_mgr_handle_conn(nc, _MG_F_FD_CAN_WRITE, mg_time());
 
-	if (nc->send_mbuf.len == 0)
-		ev_io_stop(nc->mgr->loop, &nc->watcher_w);
+	if ((nc->flags & MG_F_CLOSE_IMMEDIATELY) || 
+			(nc->send_mbuf.len == 0 && (nc->flags & MG_F_SEND_AND_CLOSE))) {
+		mg_close_conn(nc);
+	}
 }
 
 MG_INTERNAL void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
@@ -3622,12 +3628,10 @@ MG_INTERNAL void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 	struct mg_connection *nc = (struct mg_connection *)w->data;
 
 	mg_mgr_handle_conn(nc, _MG_F_FD_CAN_READ, mg_time());
-	
-	if ((nc->flags & MG_F_CLOSE_IMMEDIATELY) ||	(nc->send_mbuf.len == 0 && (nc->flags & MG_F_SEND_AND_CLOSE))) {
-		ev_io_stop(nc->mgr->loop, &nc->watcher_r);
-		ev_io_stop(nc->mgr->loop, &nc->watcher_w);
-		mg_close_conn(nc);
-		return;
+
+	if ((nc->flags & MG_F_CLOSE_IMMEDIATELY) || 
+		(nc->send_mbuf.len == 0 && (nc->flags & MG_F_SEND_AND_CLOSE))) {
+			mg_close_conn(nc);
 	}
 
 	ev_io_start(nc->mgr->loop, &nc->watcher_w);
