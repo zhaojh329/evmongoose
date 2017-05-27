@@ -3246,6 +3246,9 @@ typedef void (*mg_event_handler_t)(struct mg_connection *nc, int ev,
  * Mongoose event manager.
  */
 struct mg_mgr {
+  /* append by zjh bedin */
+  struct ev_loop *loop;
+  /* append by zjh end */
   struct mg_connection *active_connections;
 #if MG_ENABLE_HEXDUMP
   const char *hexdump_file; /* Debug hexdump file path */
@@ -3337,6 +3340,15 @@ struct mg_connection {
  * class instance.
  */
 void mg_mgr_init(struct mg_mgr *mgr, void *user_data);
+
+/* append by zjh bedin */
+/*
+** Set loop for mgr
+** If not call this function set loop,
+** mgr will use default loop.
+*/
+void mg_mgr_set_loop(struct mg_mgr *m, struct ev_loop *loop);
+/* append by zjh end */
 
 /*
  * Optional parameters to `mg_mgr_init_opt()`.

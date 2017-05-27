@@ -49,6 +49,8 @@ int main(int argc, char **argv)
 	
 	mg_mgr_init(&mgr, NULL);
 	
+	mg_mgr_set_loop(&mgr, loop);
+	
 	printf("Starting web server on port %s\n", s_http_port);
 	nc = mg_bind(&mgr, s_http_port, ev_handler);
 	if (nc == NULL) {
