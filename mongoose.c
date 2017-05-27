@@ -3573,6 +3573,7 @@ void mg_socket_if_add_conn(struct mg_connection *nc) {
   
   ev_io_init(&nc->watcher_w, ev_write_cb, nc->sock, EV_WRITE);
   nc->watcher_w.data = nc;
+  ev_io_start(EV_DEFAULT, &nc->watcher_w);
   /* <<< append by zjh */
 }
 
