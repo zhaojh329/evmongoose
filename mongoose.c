@@ -3620,7 +3620,11 @@ MG_INTERNAL void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 	if ((nc->flags & MG_F_CLOSE_IMMEDIATELY) || 
 			(nc->send_mbuf.len == 0 && (nc->flags & MG_F_SEND_AND_CLOSE))) {
 		mg_close_conn(nc);
+		return;
 	}
+
+	if (nc->send_mbuf.len == 0)
+		ev_io_stop(nc->mgr->loop, &nc->watcher_w);
 }
 
 MG_INTERNAL void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
