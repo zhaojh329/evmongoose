@@ -34,7 +34,6 @@ int main(int argc, char **argv)
 	mg_mgr_init(&mgr, NULL);
 	
 	mg_mgr_set_loop(&mgr, loop);
-	
 
 	if  (!mg_bind(&mgr, server1, ev_handler))
 		printf("Failed to open listener:%s\n", server1);
