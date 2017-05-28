@@ -51,8 +51,11 @@ endif (HTTPS_SUPPORT)
 
 add_subdirectory(example) 
 
+install(FILES mongoose.h
+	DESTINATION include
+)
+
 install(TARGETS evmongoose
 	ARCHIVE DESTINATION lib
 	LIBRARY DESTINATION lib
-	RUNTIME DESTINATION bin
 )
