@@ -17,3 +17,6 @@ target_link_libraries(tcp_echo_server evmongoose)
 
 add_executable(tcp_client tcp_client.c)
 target_link_libraries(tcp_client evmongoose)
+
+add_executable(mqtt_client mqtt_client.c)
+target_link_libraries(mqtt_client evmongoose)
