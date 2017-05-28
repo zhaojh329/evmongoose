@@ -5,11 +5,6 @@ static const char *s_ssl_cert = "server.pem";
 static const char *s_ssl_key = "server.key";
 static struct mg_serve_http_opts s_http_server_opts;
 
-static int is_equal(const struct mg_str *s1, const struct mg_str *s2)
-{
-	return s1->len == s2->len && memcmp(s1->p, s2->p, s2->len) == 0;
-}
-
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
 	char buf[] = "Hello EvMG: API Test\n";
