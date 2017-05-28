@@ -71,6 +71,9 @@ Evmongoose dose not change the usage of API in mongoose and libev,
 so please refer to the API Manual of [mongoose](https://docs.cesanta.com/mongoose/master) and libev.
 Only one thing to notice is that mg_mgr_poll is no longer invoked when using evmongoose.
 
+In addition, evmongoose added a new API: mg_mgr_set_loop, which is used to set libev's loop for Mgr.
+If the function is not called, the Mgr will use the default loop:EV_DEFAULT.
+
 # How To Contribute
 Feel free to create issues or pull-requests if you have any problems.
 

@@ -70,6 +70,9 @@ Evmongoose并没有改变mongoose和libev的API用法，所以请参考
 [mongoose](https://docs.cesanta.com/mongoose/master)
 和libev的API参考手册。只有一点需要注意，使用evmongoose时不再调用mg_mgr_poll。
 
+另外，evmongoose新增了一个API：mg_mgr_set_loop，用于给mgr设置libev的loop，如果没有显示调用
+该函数，mgr将使用默认loop：EV_DEFAULT。
+
 # 贡献代码
 
 Evmongoose使用github托管其源代码，贡献代码使用github的PR(Pull Request)的流程，十分的强大与便利:
