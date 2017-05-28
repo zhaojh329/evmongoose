@@ -2,7 +2,9 @@
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
 
-Evmongoose is an asynchronous, api friendly network library. It is based on [mongoose](https://github.com/cesanta/mongoose)
+Evmongoose is an asynchronous, event based Embedded Web Server Library - It's more than an embedded webserver Library,
+it is a multi-protocol embedded networking library with functions including TCP, HTTP client and server, WebSocket 
+client and server, MQTT client and broker and much more. It is based on [mongoose](https://github.com/cesanta/mongoose)
 and [libev](https://github.com/kindy/libev) implementation.
 
 Evmongoose supports highly customized to extend your application. Before I started this project, I had never found a HTTP server
