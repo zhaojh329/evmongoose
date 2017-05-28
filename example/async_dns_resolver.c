@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 
 	ev_run(loop, 0);
 
-	printf("Server exit...\n");
+	printf("exit...\n");
 	
 	mg_mgr_free(&mgr);
 
