@@ -2480,6 +2480,10 @@ void mg_send(struct mg_connection *nc, const void *buf, int len) {
     mg_hexdump_connection(nc, nc->mgr->hexdump_file, buf, len, MG_EV_SEND);
   }
 #endif
+
+  /* append by zjh bedin */
+  ev_io_start(nc->mgr->loop, &nc->watcher_w);
+  /* append by zjh end */
 }
 
 void mg_if_sent_cb(struct mg_connection *nc, int num_sent) {

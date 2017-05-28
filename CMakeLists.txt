@@ -4,7 +4,7 @@ project(evmongoose C)
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
-add_definitions(-O -Wall -Werror --std=gnu99)
+add_definitions(-O -Wall -Werror --std=gnu99 -g3)
 
 include_directories(${CMAKE_SOURCE_DIR})
 
