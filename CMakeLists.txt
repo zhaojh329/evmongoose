@@ -52,7 +52,8 @@ if (HTTPS_SUPPORT)
 	endif (USE_MBEDTLS)
 endif (HTTPS_SUPPORT)
 
-add_subdirectory(example) 
+add_subdirectory(lua)
+add_subdirectory(example)
 
 install(FILES mongoose.h
 	DESTINATION include
