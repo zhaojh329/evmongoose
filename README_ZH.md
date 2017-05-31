@@ -2,8 +2,11 @@
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
 
-Evmongoose是一个API接口友好和可伸缩的HTTP服务器库，它基于mongoose和libev实现。Evmongoose支持高度的可定制化
-来扩展你的应用程序。在开始这个项目之前，我一直都没有找到一个令我满意的基于事件框架的HTTP服务器库。那些HTTP
+Evmongoose是一个异步的、基于事件框架的嵌入式Web服务器库 - 它不仅仅是一个嵌入式Web服务器库，它更是一个
+集成多种协议的嵌入式网络库，包括：TCP、HTTP客户端和服务器，WebSocket客户端和服务器，MQTT客户端和服务器
+等等。它基于[mongoose](https://github.com/cesanta/mongoose)和[libev](https://github.com/kindy/libev)实现。
+
+Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这个项目之前，我一直都没有找到一个令我满意的基于事件框架的HTTP服务器库。那些HTTP
 服务器库只能loop它自己的对象，不能添加我自己的对象。比如我想基于事件框架监视某个信号（比如SIGINT）或者某个文件。
 
 # 特性
@@ -13,14 +16,17 @@ Evmongoose是一个API接口友好和可伸缩的HTTP服务器库，它基于mon
 	- Lua（开发中）
 
 * 继承自mongoose
-	- HTTP客户端, HTTP服务器
-	- SSL库可选：OpenSSL和mbedtls，对于存储苛刻的系统可选择mbedtls
-	- DNS客户端，DNS服务器，异步DNS解析
+	- TCP服务器/TCP客户端、UDP服务器/UDP客户端, SSL/TLS
+	- SSL库可选择OpenSSL或者mbedtls，对于存储苛刻的系统可选择mbedtls
+	- HTTP客户端，HTTP服务器
+	- 代理
 	- WebSocket客户端，WebSocket服务器
+	- MQTT客户端，MQTT代理
+	- CoAP客户端，CoAP服务器
+	- DNS客户端，DNS服务器，异步DNS解析
 	- Url重写
-	- ...
 
-## 示例程序
+# [示例程序](https://github.com/zhaojh329/evmongoose/blob/master/example)
 * [simplest web](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web.c)
 * [simplest web on ssl](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web_ssl.c)
 * [http client](https://github.com/zhaojh329/evmongoose/blob/master/example/http_client.c)
@@ -64,6 +70,9 @@ Evmongoose是一个API接口友好和可伸缩的HTTP服务器库，它基于mon
 Evmongoose并没有改变mongoose和libev的API用法，所以请参考
 [mongoose](https://docs.cesanta.com/mongoose/master)
 和libev的API参考手册。只有一点需要注意，使用evmongoose时不再调用mg_mgr_poll。
+
+另外，evmongoose新增了一个API：mg_mgr_set_loop，用于给mgr设置libev的loop，如果没有显示调用
+该函数，mgr将使用默认loop：EV_DEFAULT。
 
 # 贡献代码
 

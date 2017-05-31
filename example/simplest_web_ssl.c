@@ -5,13 +5,6 @@ static const char *s_ssl_cert = "server.pem";
 static const char *s_ssl_key = "server.key";
 static struct mg_serve_http_opts s_http_server_opts;
 
-static const struct mg_str test_uri = MG_MK_STR("/test");
-
-static int is_equal(const struct mg_str *s1, const struct mg_str *s2)
-{
-	return s1->len == s2->len && memcmp(s1->p, s2->p, s2->len) == 0;
-}
-
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
 	char buf[] = "Hello EvMG: API Test\n";
@@ -19,7 +12,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	
 	switch (ev) {
 	case MG_EV_HTTP_REQUEST:
-		if (is_equal(&hm->uri, &test_uri)) {
+		if (!mg_vcmp(&hm->uri, "/test")) {
 			printf("Request test...\n");
 			mg_printf(nc, "HTTP/1.1 200 OK\r\n"
 						  "Content-Length: %d\r\n\r\n"

@@ -2,26 +2,33 @@
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
 
-Evmongoose is an api friendly and scalable HTTP server library based on mongoose and libev. Evmongoose supports
-highly customized to extend your application. Before I started this project, I had never found a HTTP server
-library that was satisfied with the event based framework, and those HTTP server libraries could only loop it's
-own objects and could not add my own objects. For example, I want to monitor a signal or a file through the event.
+Evmongoose is an asynchronous, event based Embedded Web Server Library - It's more than an embedded webserver Library,
+it is a multi-protocol embedded networking library with functions including TCP, HTTP client and server, WebSocket 
+client and server, MQTT client and broker and much more. It is based on [mongoose](https://github.com/cesanta/mongoose)
+and [libev](https://github.com/kindy/libev) implementation.
+
+Evmongoose supports highly customized to extend your application. Before I started this project, I had never found a HTTP server
+library that was satisfied with the event based framework, and those HTTP server libraries could only loop it'sown objects and 
+could not add my own objects. For example, I want to monitor a signal or a file through the event.
 
 # Features
 * New from evmongoose
-    - Using libev programming
+    - Using libev programming 
 	- Highly customized to extend your application based on libev
 	- Lua(In development)
 
 * Inherited from mongoose
-	- HTTP client, HTTP server
+	- plain TCP, plain UDP, SSL/TLS (over TCP, one-way or two-way)
 	- Alternative openssl and mbedtls
-	- DNS client, DNS server, async DNS resolver
+	- HTTP client, HTTP server
+	- Proxy
 	- WebSocket client, WebSocket server
+	- MQTT client, MQTT broker
+	- CoAP client, CoAP server
+	- DNS client, DNS server, async DNS resolver
 	- Url Rewrite
-	- ...
 
-# Example
+# [Example](https://github.com/zhaojh329/evmongoose/blob/master/example)
 * [simplest web](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web.c)
 * [simplest web on ssl](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web_ssl.c)
 * [http client](https://github.com/zhaojh329/evmongoose/blob/master/example/http_client.c)
@@ -65,6 +72,9 @@ own objects and could not add my own objects. For example, I want to monitor a s
 Evmongoose dose not change the usage of API in mongoose and libev, 
 so please refer to the API Manual of [mongoose](https://docs.cesanta.com/mongoose/master) and libev.
 Only one thing to notice is that mg_mgr_poll is no longer invoked when using evmongoose.
+
+In addition, evmongoose added a new API: mg_mgr_set_loop, which is used to set libev's loop for Mgr.
+If the function is not called, the Mgr will use the default loop:EV_DEFAULT.
 
 # How To Contribute
 Feel free to create issues or pull-requests if you have any problems.
