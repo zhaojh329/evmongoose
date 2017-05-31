@@ -13,6 +13,9 @@ static int mg_ctx_destroy(lua_State *L)
 {
 	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_NAME);
 	mg_mgr_free(&ctx->mgr);
+	
+	printf("mg_ctx_destroy:%p\n", ctx);
+	
     return 0;
 }
 
@@ -26,6 +29,8 @@ static int mg_ctx_init(lua_State *L)
     lua_setmetatable(L, -2);
 
     ctx->vm = L;
+	
+	printf("mg_ctx_init:%p\n", ctx);
 	
 	return 1;
 }
@@ -58,6 +63,7 @@ int luaopen_evmongoose(lua_State *L)
 	static const luaL_Reg mongoose_meta[] =
 	{
 		{"__gc", mg_ctx_destroy},
+		{"destroy", mg_ctx_destroy},
 		{"bind", mg_ctx_bind},
 		{NULL, NULL}
 	};
