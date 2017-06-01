@@ -8,15 +8,18 @@ add_definitions(-O -Wall -Werror --std=gnu99 -g3)
 
 include_directories(${CMAKE_SOURCE_DIR})
 
-find_library(LIBEV ev)
+find_library(LIBEV_LIBRARY NAMES ev)
+find_path(LIBEV_INCLUDE_DIR ev.h PATH_SUFFIXES include)
+include(FindPackageHandleStandardArgs)
+find_package_handle_standard_args(libev DEFAULT_MSG LIBEV_LIBRARY LIBEV_INCLUDE_DIR)
+if (NOT LIBEV_FOUND)
+	message(FATAL_ERROR "libev not found")
+endif (NOT LIBEV_FOUND)
+ 
 find_library(LIBMBEDTLS mbedtls)
 find_library(LIBMBEDCRYPTO mbedcrypto)
 find_library(LIBMBEDX509 mbedx509)
 find_package(OpenSSL)
-
-if (NOT LIBEV)
-	message(FATAL_ERROR "libev not found")
-endif (NOT LIBEV)
 
 set(HTTPS_SUPPORT_DEFAULT "ON")
 
@@ -28,7 +31,7 @@ option(HTTPS_SUPPORT "whether to support https" ${HTTPS_SUPPORT_DEFAULT})
 option(USE_MBEDTLS "whether force use mbedtls to support https" OFF)
 
 add_library(evmongoose SHARED mongoose.c)
-target_link_libraries(evmongoose ${LIBEV})
+target_link_libraries(evmongoose ${LIBEV_LIBRARY})
 
 if (HTTPS_SUPPORT)
 	if (NOT OPENSSL_FOUND AND (NOT LIBMBEDTLS OR NOT LIBMBEDCRYPTO OR NOT LIBMBEDX509))
@@ -49,7 +52,8 @@ if (HTTPS_SUPPORT)
 	endif (USE_MBEDTLS)
 endif (HTTPS_SUPPORT)
 
-add_subdirectory(example) 
+add_subdirectory(lua)
+add_subdirectory(example)
 
 install(FILES mongoose.h
 	DESTINATION include
