@@ -2,6 +2,9 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+#define LOOP_MT    "ev{loop}"
+#define UNINITIALIZED_DEFAULT_LOOP (struct ev_loop*)1
+
 #define MONGOOSE_NAME "mongoose"
 
 struct mg_context {
@@ -13,22 +16,30 @@ struct mg_context {
 static int mg_ctx_destroy(lua_State *L)
 {
 	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_NAME);
-	mg_mgr_free(&ctx->mgr);
-	
 	printf("mg_ctx_destroy:%p\n", ctx);
-	
+	mg_mgr_free(&ctx->mgr);
     return 0;
 }
 
 static int mg_ctx_init(lua_State *L)
 {
-	struct mg_context *ctx = lua_newuserdata(L, sizeof(struct mg_context));
-
+	struct ev_loop **loop = NULL;
+	struct mg_context *ctx;
+	
+	if (lua_gettop(L) > 0) {
+		loop = luaL_checkudata(L, 1, LOOP_MT);
+	}
+	
+	ctx = lua_newuserdata(L, sizeof(struct mg_context));
     mg_mgr_init(&ctx->mgr, NULL);
-
     luaL_getmetatable(L, MONGOOSE_NAME);
     lua_setmetatable(L, -2);
 
+	if (loop && *loop != UNINITIALIZED_DEFAULT_LOOP) {
+		mg_mgr_set_loop(&ctx->mgr, *loop);
+		printf("set loop:%p\n", *loop);
+	}
+	
     ctx->vm = L;
 	
 	printf("mg_ctx_init:%p\n", ctx);
