@@ -7,6 +7,7 @@
 struct mg_context {
     struct mg_mgr mgr;
     lua_State *vm;
+	int callback;
 };
 
 static int mg_ctx_destroy(lua_State *L)
@@ -35,8 +36,52 @@ static int mg_ctx_init(lua_State *L)
 	return 1;
 }
 
+static struct mg_serve_http_opts s_http_server_opts;
+
+static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
+{
+	char buf[] = "Hello EvMG: API Test\n";
+	struct http_message *hm = (struct http_message *)ev_data;
+	
+	switch (ev) {
+	case MG_EV_HTTP_REQUEST:
+		if (!mg_vcmp(&hm->uri, "/test")) {
+			printf("Request test...\n");
+			mg_printf(nc, "HTTP/1.1 200 OK\r\n"
+						  "Content-Length: %d\r\n\r\n"
+						  "%s", (int)strlen(buf), buf);
+		} else {
+			mg_serve_http(nc, hm, s_http_server_opts); /* Serve static content */
+		}
+		break;
+	default:
+		break;		
+	}
+}
+
 static int mg_ctx_bind(lua_State *L)
 {
+	int ref;
+	struct mg_connection *nc;
+	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_NAME);
+	const char *address = luaL_checkstring(L, 2);
+	
+	luaL_checktype(L, 3, LUA_TFUNCTION);
+	ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	
+	nc = mg_bind(&ctx->mgr, address, ev_handler);
+	if (nc == NULL) {
+		luaL_error(L, "Failed to bind:%s", address);
+		return 1;
+	}
+	
+	// Set up HTTP server parameters
+	mg_set_protocol_http_websocket(nc);
+	s_http_server_opts.document_root = ".";  // Serve current directory
+	s_http_server_opts.enable_directory_listing = "yes";
+
+	ctx->callback = ref;
+	
 	return 1;
 }
 
