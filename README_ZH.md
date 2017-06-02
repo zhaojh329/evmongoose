@@ -13,7 +13,7 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
 * 新特性
     - 使用libev编程
 	- 高度的可定制化
-	- Lua（开发中）
+	- Lua
 
 * 继承自mongoose
 	- TCP服务器/TCP客户端、UDP服务器/UDP客户端, SSL/TLS
@@ -90,6 +90,7 @@ Evmongoose使用github托管其源代码，贡献代码使用github的PR(Pull Re
 ## 感谢以下项目提供帮助
 * [mongoose](https://github.com/cesanta/mongoose)
 * [libev](https://github.com/kindy/libev)
+* [lua-mongoose](https://github.com/shuax/lua-mongoose)
 
 # 技术交流
 QQ群：153530783
