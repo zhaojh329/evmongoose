@@ -12,12 +12,11 @@
 	
 #define LOOP_MT    "ev{loop}"
 #define UNINITIALIZED_DEFAULT_LOOP (struct ev_loop*)1
-
 #define MONGOOSE_MT "mongoose"
 
 struct mg_context {
     struct mg_mgr mgr;
-    lua_State *vm;
+    lua_State *L;
 	int callback;
 };
 
@@ -48,7 +47,7 @@ static int mg_ctx_init(lua_State *L)
 		printf("set loop:%p\n", *loop);
 	}
 	
-    ctx->vm = L;
+    ctx->L = L;
 	
 	printf("mg_ctx_init:%p\n", ctx);
 	
@@ -61,18 +60,12 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
 	struct mg_mgr *mgr = nc->mgr;
 	struct mg_context *ctx = container_of(mgr, struct mg_context, mgr);
-	lua_State *L = ctx->vm;	
+	lua_State *L = ctx->L;	
 	
-	switch (ev) {
-	case MG_EV_HTTP_REQUEST: {
+	if (ev == MG_EV_HTTP_REQUEST) {
 		lua_rawgeti(L, LUA_REGISTRYINDEX , ctx->callback);
 		lua_pushinteger(L, (long)nc);
-		printf("nc: %ld\n", (long)nc);
 		lua_pcall(L, 1, 1, 0);
-		break;
-	}
-	default:
-		break;		
 	}
 }
 
@@ -106,9 +99,6 @@ static int mg_ctx_printf(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
 	const char *buf = luaL_checkstring(L, 3);
-	
-	printf("xx:[%s]\n", buf);
-	
 	mg_printf(nc, "%s", buf);
 	return 0;
 }
