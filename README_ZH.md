@@ -31,6 +31,7 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
 * [simplest web on ssl](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web_ssl.c)
 * [http client](https://github.com/zhaojh329/evmongoose/blob/master/example/http_client.c)
 * [async DNS resolver](https://github.com/zhaojh329/evmongoose/blob/master/example/async_dns_resolver.c)
+* [Lua Test](https://github.com/zhaojh329/evmongoose/blob/master/example/lua_test.lua)
 
 # 编译
 ## 在Ubuntu上运行
