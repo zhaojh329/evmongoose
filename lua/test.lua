@@ -4,10 +4,6 @@ local ev = require("ev")
 local evmongoose = require("evmongoose")
 local loop = ev.Loop.new()
 
-local function on_timeout()
-	print(os.time())
-end
-
 local mgr = evmongoose.init(loop)
 
 local function ev_handle(nc)
