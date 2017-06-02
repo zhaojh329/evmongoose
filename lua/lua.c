@@ -54,9 +54,26 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	lua_State *L = ctx->L;
 	
 	if (ev == MG_EV_HTTP_REQUEST) {
+		struct http_message *hm = (struct http_message *)ev_data;
+		
 		lua_rawgeti(L, LUA_REGISTRYINDEX , ctx->callback);
 		lua_pushinteger(L, (long)nc);
-		lua_pcall(L, 1, 1, 0);
+		
+		lua_newtable(L);
+		
+		lua_pushlstring(L, hm->method.p, hm->method.len);
+		lua_setfield(L, -2, "method");
+		
+		lua_pushlstring(L, hm->uri.p, hm->uri.len);
+		lua_setfield(L, -2, "uri");
+		
+		lua_pushlstring(L, hm->proto.p, hm->proto.len);
+		lua_setfield(L, -2, "proto");
+		
+		lua_pushlstring(L, hm->query_string.p, hm->query_string.len);
+		lua_setfield(L, -2, "query_string");
+	
+		lua_pcall(L, 2, 0, 0);
 	}
 }
 
