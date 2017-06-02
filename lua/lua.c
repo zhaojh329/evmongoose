@@ -2,6 +2,14 @@
 #include <lauxlib.h>
 #include <lualib.h>
 
+#ifndef container_of
+#define container_of(ptr, type, member)					\
+	({								\
+		const typeof(((type *) NULL)->member) *__mptr = (ptr);	\
+		(type *) ((char *) __mptr - offsetof(type, member));	\
+	})
+#endif
+	
 #define LOOP_MT    "ev{loop}"
 #define UNINITIALIZED_DEFAULT_LOOP (struct ev_loop*)1
 
@@ -51,20 +59,18 @@ static struct mg_serve_http_opts s_http_server_opts;
 
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
-	char buf[] = "Hello EvMG: API Test\n";
-	struct http_message *hm = (struct http_message *)ev_data;
+	struct mg_mgr *mgr = nc->mgr;
+	struct mg_context *ctx = container_of(mgr, struct mg_context, mgr);
+	lua_State *L = ctx->vm;	
 	
 	switch (ev) {
-	case MG_EV_HTTP_REQUEST:
-		if (!mg_vcmp(&hm->uri, "/test")) {
-			printf("Request test...\n");
-			mg_printf(nc, "HTTP/1.1 200 OK\r\n"
-						  "Content-Length: %d\r\n\r\n"
-						  "%s", (int)strlen(buf), buf);
-		} else {
-			mg_serve_http(nc, hm, s_http_server_opts); /* Serve static content */
-		}
+	case MG_EV_HTTP_REQUEST: {
+		lua_rawgeti(L, LUA_REGISTRYINDEX , ctx->callback);
+		lua_pushinteger(L, (long)nc);
+		printf("nc: %ld\n", (long)nc);
+		lua_pcall(L, 1, 1, 0);
 		break;
+	}
 	default:
 		break;		
 	}
@@ -96,6 +102,17 @@ static int mg_ctx_bind(lua_State *L)
 	return 1;
 }
 
+static int mg_ctx_printf(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	const char *buf = luaL_checkstring(L, 3);
+	
+	printf("xx:[%s]\n", buf);
+	
+	mg_printf(nc, "%s", buf);
+	return 0;
+}
+
 #if LUA_VERSION_NUM==501
 /*
 ** Adapted from Lua 5.2
@@ -121,6 +138,7 @@ int luaopen_evmongoose(lua_State *L)
 		{"__gc", mg_ctx_destroy},
 		{"destroy", mg_ctx_destroy},
 		{"bind", mg_ctx_bind},
+		{"printf", mg_ctx_printf},
 		{NULL, NULL}
 	};
 

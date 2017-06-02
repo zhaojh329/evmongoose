@@ -10,7 +10,10 @@ end
 
 local mgr = evmongoose.init(loop)
 
-local function ev_handle()
+local function ev_handle(nc)
+	mgr:printf(nc, "HTTP/1.1 200 OK\r\n")
+	mgr:printf(nc, "Content-Length: 3\r\n\r\n")
+	mgr:printf(nc, "123")
 end
 
 mgr:bind("8000", ev_handle)
