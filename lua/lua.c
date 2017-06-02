@@ -29,23 +29,18 @@ static int mg_ctx_destroy(lua_State *L)
 
 static int mg_ctx_init(lua_State *L)
 {
-	struct ev_loop **loop = NULL;
-	struct mg_context *ctx;
+	struct mg_context *ctx = lua_newuserdata(L, sizeof(struct mg_context));
 	
-	if (lua_gettop(L) > 0)
-		loop = luaL_checkudata(L, 1, LOOP_MT);
-	
-	ctx = lua_newuserdata(L, sizeof(struct mg_context));
+	ctx->L = L;
     mg_mgr_init(&ctx->mgr, NULL);
     luaL_getmetatable(L, MONGOOSE_MT);
     lua_setmetatable(L, -2);
 
-	if (loop && *loop != UNINITIALIZED_DEFAULT_LOOP) {
-		mg_mgr_set_loop(&ctx->mgr, *loop);
-		printf("set loop:%p\n", *loop);
+	if (lua_gettop(L) > 1) {
+		struct ev_loop **loop = luaL_checkudata(L, 1, LOOP_MT);
+		if (loop && *loop != UNINITIALIZED_DEFAULT_LOOP)
+			mg_mgr_set_loop(&ctx->mgr, *loop);
 	}
-	
-    ctx->L = L;
 	
 	return 1;
 }
@@ -56,7 +51,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
 	struct mg_mgr *mgr = nc->mgr;
 	struct mg_context *ctx = container_of(mgr, struct mg_context, mgr);
-	lua_State *L = ctx->L;	
+	lua_State *L = ctx->L;
 	
 	if (ev == MG_EV_HTTP_REQUEST) {
 		lua_rawgeti(L, LUA_REGISTRYINDEX , ctx->callback);
