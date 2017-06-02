@@ -13,7 +13,7 @@
 #define LOOP_MT    "ev{loop}"
 #define UNINITIALIZED_DEFAULT_LOOP (struct ev_loop*)1
 
-#define MONGOOSE_NAME "mongoose"
+#define MONGOOSE_MT "mongoose"
 
 struct mg_context {
     struct mg_mgr mgr;
@@ -23,7 +23,7 @@ struct mg_context {
 
 static int mg_ctx_destroy(lua_State *L)
 {
-	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_NAME);
+	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	printf("mg_ctx_destroy:%p\n", ctx);
 	mg_mgr_free(&ctx->mgr);
     return 0;
@@ -40,7 +40,7 @@ static int mg_ctx_init(lua_State *L)
 	
 	ctx = lua_newuserdata(L, sizeof(struct mg_context));
     mg_mgr_init(&ctx->mgr, NULL);
-    luaL_getmetatable(L, MONGOOSE_NAME);
+    luaL_getmetatable(L, MONGOOSE_MT);
     lua_setmetatable(L, -2);
 
 	if (loop && *loop != UNINITIALIZED_DEFAULT_LOOP) {
@@ -80,7 +80,7 @@ static int mg_ctx_bind(lua_State *L)
 {
 	int ref;
 	struct mg_connection *nc;
-	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_NAME);
+	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *address = luaL_checkstring(L, 2);
 	
 	luaL_checktype(L, 3, LUA_TFUNCTION);
@@ -131,25 +131,23 @@ void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup) {
 }
 #endif
 
+static const luaL_Reg mongoose_meta[] = {
+	{"__gc", mg_ctx_destroy},
+	{"destroy", mg_ctx_destroy},
+	{"bind", mg_ctx_bind},
+	{"printf", mg_ctx_printf},
+	{NULL, NULL}
+};
+	
 int luaopen_evmongoose(lua_State *L) 
 {
-	static const luaL_Reg mongoose_meta[] =
-	{
-		{"__gc", mg_ctx_destroy},
-		{"destroy", mg_ctx_destroy},
-		{"bind", mg_ctx_bind},
-		{"printf", mg_ctx_printf},
-		{NULL, NULL}
-	};
-
 	/* metatable.__index = metatable */
-    luaL_newmetatable(L, MONGOOSE_NAME);
+    luaL_newmetatable(L, MONGOOSE_MT);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
     luaL_setfuncs(L, mongoose_meta, 0);
 
     lua_createtable(L, 0, 1);
-
     lua_pushcfunction(L, mg_ctx_init);
     lua_setfield(L, -2, "init");
 	
