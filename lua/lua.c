@@ -23,7 +23,6 @@ struct mg_context {
 static int mg_ctx_destroy(lua_State *L)
 {
 	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
-	printf("mg_ctx_destroy:%p\n", ctx);
 	mg_mgr_free(&ctx->mgr);
     return 0;
 }
@@ -33,9 +32,8 @@ static int mg_ctx_init(lua_State *L)
 	struct ev_loop **loop = NULL;
 	struct mg_context *ctx;
 	
-	if (lua_gettop(L) > 0) {
+	if (lua_gettop(L) > 0)
 		loop = luaL_checkudata(L, 1, LOOP_MT);
-	}
 	
 	ctx = lua_newuserdata(L, sizeof(struct mg_context));
     mg_mgr_init(&ctx->mgr, NULL);
@@ -48,8 +46,6 @@ static int mg_ctx_init(lua_State *L)
 	}
 	
     ctx->L = L;
-	
-	printf("mg_ctx_init:%p\n", ctx);
 	
 	return 1;
 }
