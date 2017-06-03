@@ -7,8 +7,8 @@ local loop = ev.Loop.new()
 
 local mgr = evmongoose.init(loop)
 
-local function ev_handle(nc, msg)
-	if msg.uri ~= "/luatest" then
+local function ev_handle(nc, event, msg)	
+	if event ~= evmongoose.MG_EV_HTTP_REQUEST or msg.uri ~= "/luatest" then
 		return false
 	end
 
