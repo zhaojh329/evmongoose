@@ -3641,8 +3641,6 @@ MG_INTERNAL void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 		(nc->send_mbuf.len == 0 && (nc->flags & MG_F_SEND_AND_CLOSE))) {
 			mg_close_conn(nc);
 	}
-
-	ev_io_start(nc->mgr->loop, &nc->watcher_w);
 }
 /* <<< append by zjh */
 
