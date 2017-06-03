@@ -8,8 +8,6 @@ local loop = ev.Loop.new()
 local mgr = evmongoose.init(loop)
 
 local function ev_handle(nc, msg)
-	local content = "lua for evmongoose"
-	
 	mgr:send_head(nc, 200, -1)
 	
 	mgr:print_http_chunk(nc, "<h1>method:" .. msg.method .. "</h1>")
