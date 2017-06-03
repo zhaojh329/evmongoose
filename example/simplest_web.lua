@@ -14,6 +14,12 @@ local function ev_handle(nc, msg)
 	mgr:print_http_chunk(nc, "<h1>uri:" .. msg.uri .. "</h1>")
 	mgr:print_http_chunk(nc, "<h1>proto:" .. msg.proto .. "</h1>")
 	mgr:print_http_chunk(nc, "<h1>query_string:" .. msg.query_string .. "</h1>")
+
+
+	for k, v in pairs(msg.headers) do
+		mgr:print_http_chunk(nc, "<h1>" .. k .. ": " .. v ..  "</h1>")
+	end
+	
 	mgr:print_http_chunk(nc, "")
 end
 

@@ -61,6 +61,8 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	lua_State *L = ctx->L;
 	
 	if (ev == MG_EV_HTTP_REQUEST) {
+		int i;
+		char tmp[128];
 		struct http_message *hm = (struct http_message *)ev_data;
 		
 		lua_rawgeti(L, LUA_REGISTRYINDEX , ctx->callback);
@@ -79,7 +81,20 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 		
 		lua_pushlstring(L, hm->query_string.p, hm->query_string.len);
 		lua_setfield(L, -2, "query_string");
-	
+
+		lua_newtable(L);
+
+		for (i = 0; hm->header_names[i].len > 0; i++) {
+			struct mg_str *h = &hm->header_names[i], *v = &hm->header_values[i];
+			if (h->p) {
+				lua_pushlstring(L,v->p, v->len);
+				snprintf(tmp, sizeof(tmp), "%.*s", (int)h->len, h->p);
+				lua_setfield(L, -2, tmp);
+			}
+		  }
+		
+		lua_setfield(L, -2, "headers");
+		
 		lua_pcall(L, 2, 0, 0);
 	}
 }
