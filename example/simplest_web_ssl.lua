@@ -29,6 +29,8 @@ local function ev_handle(nc, msg)
 end
 
 local opts = {
+	ssl_cert = "server.pem",
+	ssl_key = "server.key",
 	document_root = "."
 }
 

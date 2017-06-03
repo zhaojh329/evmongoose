@@ -53,8 +53,6 @@ static int mg_ctx_init(lua_State *L)
 	return 1;
 }
 
-static struct mg_serve_http_opts s_http_server_opts;
-
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
 	struct mg_mgr *mgr = nc->mgr;
@@ -92,7 +90,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 				snprintf(tmp, sizeof(tmp), "%.*s", (int)h->len, h->p);
 				lua_setfield(L, -2, tmp);
 			}
-		  }
+		}
 		
 		lua_setfield(L, -2, "headers");
 		
@@ -107,22 +105,45 @@ static int mg_ctx_bind(lua_State *L)
 {
 	int ref;
 	struct mg_connection *nc;
+	struct mg_bind_opts opts;
 	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *address = luaL_checkstring(L, 2);
+	const char *err;
 	
 	luaL_checktype(L, 3, LUA_TFUNCTION);
+	
+	memset(&opts, 0, sizeof(opts));
+
+	opts.error_string = &err;
+	
+	if (lua_istable(L, 4)) {
+		lua_getfield(L, 4, "document_root");
+		ctx->http_opts.document_root = lua_tostring(L, -1);
+	
+		lua_getfield(L, 4, "ssl_cert");
+		opts.ssl_cert = lua_tostring(L, -1);
+	
+		lua_getfield(L, 4, "ssl_key");
+		opts.ssl_key = lua_tostring(L, -1);
+		
+		lua_getfield(L, 4, "ssl_ca_cert");
+		opts.ssl_ca_cert = lua_tostring(L, -1);
+		
+		lua_getfield(L, 4, "ssl_cipher_suites");
+		opts.ssl_cipher_suites = lua_tostring(L, -1);
+	}
+
+	lua_settop(L, 3);
 	ref = luaL_ref(L, LUA_REGISTRYINDEX);
 	
-	nc = mg_bind(&ctx->mgr, address, ev_handler);
+	nc = mg_bind_opt(&ctx->mgr, address, ev_handler, opts);
 	if (nc == NULL) {
-		luaL_error(L, "Failed to bind:%s", address);
+		luaL_error(L, "%s", err);
 		return 1;
 	}
 	
 	// Set up HTTP server parameters
 	mg_set_protocol_http_websocket(nc);
-	s_http_server_opts.document_root = ".";  // Serve current directory
-	s_http_server_opts.enable_directory_listing = "yes";
 
 	ctx->callback = ref;
 	
