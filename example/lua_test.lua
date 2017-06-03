@@ -5,7 +5,6 @@ local evmongoose = require("evmongoose")
 --local loop = ev.Loop.default
 local loop = ev.Loop.new()
 
-
 local mgr = evmongoose.init(loop)
 
 local function ev_handle(nc, msg)
