@@ -21,6 +21,12 @@ mgr:bind("8000", ev_handle)
 
 print("Listen on 8000...")
 
+ev.Signal.new(function(loop, sig, revents)
+	loop:unloop()
+end, ev.SIGINT):start(loop)
+
 loop:loop()
 
 mgr:destroy()
+
+print("exit...")

@@ -18,12 +18,17 @@ struct mg_context {
     struct mg_mgr mgr;
     lua_State *L;
 	int callback;
+	int initialized;
 };
 
 static int mg_ctx_destroy(lua_State *L)
 {
 	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
-	mg_mgr_free(&ctx->mgr);
+	
+	if (ctx->initialized) {
+		ctx->initialized = 0;
+		mg_mgr_free(&ctx->mgr);
+	}
     return 0;
 }
 
@@ -32,6 +37,8 @@ static int mg_ctx_init(lua_State *L)
 	struct mg_context *ctx = lua_newuserdata(L, sizeof(struct mg_context));
 	
 	ctx->L = L;
+	ctx->initialized = 1;
+	
     mg_mgr_init(&ctx->mgr, NULL);
     luaL_getmetatable(L, MONGOOSE_MT);
     lua_setmetatable(L, -2);
