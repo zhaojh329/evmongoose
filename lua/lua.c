@@ -19,6 +19,7 @@ struct mg_context {
     lua_State *L;
 	int callback;
 	int initialized;
+	struct mg_serve_http_opts http_opts;
 };
 
 static int mg_ctx_destroy(lua_State *L)
@@ -95,7 +96,10 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 		
 		lua_setfield(L, -2, "headers");
 		
-		lua_pcall(L, 2, 0, 0);
+		lua_call(L, 2, 1);
+
+		if (!lua_toboolean(L, -1))
+			mg_serve_http(nc, hm, ctx->http_opts); /* Serve static content */
 	}
 }
 
