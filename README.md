@@ -15,7 +15,7 @@ could not add my own objects. For example, I want to monitor a signal or a file 
 * New from evmongoose
     - Using libev programming 
 	- Highly customized to extend your application based on libev
-	- Lua(In development)
+	- Lua(Depends on lua-ev)
 
 * Inherited from mongoose
 	- plain TCP, plain UDP, SSL/TLS (over TCP, one-way or two-way)
@@ -33,6 +33,7 @@ could not add my own objects. For example, I want to monitor a signal or a file 
 * [simplest web on ssl](https://github.com/zhaojh329/evmongoose/blob/master/example/simplest_web_ssl.c)
 * [http client](https://github.com/zhaojh329/evmongoose/blob/master/example/http_client.c)
 * [async DNS resolver](https://github.com/zhaojh329/evmongoose/blob/master/example/async_dns_resolver.c)
+* [Lua Test](https://github.com/zhaojh329/evmongoose/blob/master/example/lua_test.lua)
 
 # How To Compile
 ## For Ubuntu
@@ -85,5 +86,7 @@ before pushing any changes.**
 # Thanks for the following project
 * [mongoose](https://github.com/cesanta/mongoose)
 * [libev](https://github.com/kindy/libev)
+* [lua-ev](https://github.com/brimworks/lua-ev)
+* [lua-mongoose](https://github.com/shuax/lua-mongoose)
 
 # If the project is helpful to you, please do not hesitate to star. Thank you!
