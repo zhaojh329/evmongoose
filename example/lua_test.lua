@@ -11,17 +11,18 @@ local mgr = evmongoose.init(loop)
 local function ev_handle(nc, msg)
 	local content = "lua for evmongoose"
 	
-	print("method:", msg.method)
-	print("uri:", msg.uri)
-	print("proto:", msg.proto)
-	print("query_string:", msg.query_string)
+	mgr:send_head(nc, 200, -1)
 	
-	mgr:printf(nc, "HTTP/1.1 200 OK\r\n")
-	mgr:printf(nc, "Content-Length: " .. #content .. "\r\n\r\n")
-	mgr:printf(nc, content)
+	mgr:print_http_chunk(nc, "<h1>method:" .. msg.method .. "</h1>")
+	mgr:print_http_chunk(nc, "<h1>uri:" .. msg.uri .. "</h1>")
+	mgr:print_http_chunk(nc, "<h1>proto:" .. msg.proto .. "</h1>")
+	mgr:print_http_chunk(nc, "<h1>query_string:" .. msg.query_string .. "</h1>")
+	mgr:print_http_chunk(nc, "")
 end
 
 mgr:bind("8000", ev_handle)
+
+print("Listen on 8000...")
 
 loop:loop()
 

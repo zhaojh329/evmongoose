@@ -103,11 +103,29 @@ static int mg_ctx_bind(lua_State *L)
 	return 1;
 }
 
-static int mg_ctx_printf(lua_State *L)
+static int mg_ctx_send_head(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	int status_code = luaL_checkint(L, 3);
+	int64_t content_length = luaL_checkint(L, 4);
+	const char *extra_headers = lua_tostring(L, 5);
+	mg_send_head(nc, status_code, content_length, extra_headers);
+	return 0;
+}
+
+static int mg_ctx_print(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
 	const char *buf = luaL_checkstring(L, 3);
-	mg_printf(nc, "%s", buf);
+	mg_send(nc, buf, strlen(buf));
+	return 0;
+}
+
+static int mg_ctx_print_http_chunk(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	const char *buf = luaL_checkstring(L, 3);
+	mg_send_http_chunk(nc, buf, strlen(buf));
 	return 0;
 }
 
@@ -133,7 +151,9 @@ static const luaL_Reg mongoose_meta[] = {
 	{"__gc", mg_ctx_destroy},
 	{"destroy", mg_ctx_destroy},
 	{"bind", mg_ctx_bind},
-	{"printf", mg_ctx_printf},
+	{"send_head", mg_ctx_send_head},
+	{"print", mg_ctx_print},
+	{"print_http_chunk", mg_ctx_print_http_chunk},
 	{NULL, NULL}
 };
 	
