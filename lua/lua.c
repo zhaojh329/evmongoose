@@ -293,7 +293,6 @@ static int lua_mg_mqtt_publish(lua_State *L)
 	return 0;
 }
 
-
 static int lua_mg_send_head(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
@@ -307,16 +306,18 @@ static int lua_mg_send_head(lua_State *L)
 static int lua_mg_print(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
-	const char *buf = luaL_checkstring(L, 3);
-	mg_send(nc, buf, strlen(buf));
+	size_t len = 0;
+	const char *buf = luaL_checklstring(L, 3, &len);
+	mg_send(nc, buf, len);
 	return 0;
 }
 
 static int lua_mg_print_http_chunk(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
-	const char *buf = luaL_checkstring(L, 3);
-	mg_send_http_chunk(nc, buf, strlen(buf));
+	size_t len = 0;
+	const char *buf = luaL_checklstring(L, 3, &len);
+	mg_send_http_chunk(nc, buf, len);
 	return 0;
 }
 
