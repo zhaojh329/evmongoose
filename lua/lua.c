@@ -284,11 +284,12 @@ static int lua_mg_mqtt_publish(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
 	const char *topic = luaL_checkstring(L, 3);
-	const char *payload = luaL_checkstring(L, 4);
+	size_t len = 0;
+	const char *payload = luaL_checklstring(L, 4, &len);
 	int msgid = lua_tointeger(L, 5);
 	int qos = lua_tointeger(L, 6);
 	
-	mg_mqtt_publish(nc, topic, msgid, MG_MQTT_QOS(qos), payload, strlen(payload));
+	mg_mqtt_publish(nc, topic, msgid, MG_MQTT_QOS(qos), payload, len);
 	return 0;
 }
 
