@@ -2,10 +2,9 @@
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
 
-Evmongoose is an asynchronous, event based Embedded Web Server Library - It's more than an embedded webserver Library,
-it is a multi-protocol embedded networking library with functions including TCP, HTTP client and server, WebSocket 
-client and server, MQTT client and broker and much more. It is based on [mongoose](https://github.com/cesanta/mongoose)
-and [libev](https://github.com/kindy/libev) implementation.
+Evmongoose is an asynchronous, event(libev) based multi-protocol embedded networking library 
+with functions including TCP, HTTP, WebSocket, MQTT and much more. It is based on [mongoose](https://github.com/cesanta/mongoose)
+and [libev](https://github.com/kindy/libev) implementation and it's support Lua API.
 
 Evmongoose supports highly customized to extend your application. Before I started this project, I had never found a HTTP server
 library that was satisfied with the event based framework, and those HTTP server libraries could only loop it'sown objects and 
@@ -15,7 +14,7 @@ could not add my own objects. For example, I want to monitor a signal or a file 
 * New from evmongoose
     - Using libev programming 
 	- Highly customized to extend your application based on libev
-	- Lua(Depends on lua-ev)
+	- Lua API(Depends on lua-ev)
 
 * Inherited from mongoose
 	- plain TCP, plain UDP, SSL/TLS (over TCP, one-way or two-way)

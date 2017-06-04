@@ -2,9 +2,8 @@
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
 
-Evmongoose是一个异步的、基于事件框架的嵌入式Web服务器库 - 它不仅仅是一个嵌入式Web服务器库，它更是一个
-集成多种协议的嵌入式网络库，包括：TCP、HTTP客户端和服务器，WebSocket客户端和服务器，MQTT客户端和服务器
-等等。它基于[mongoose](https://github.com/cesanta/mongoose)和[libev](https://github.com/kindy/libev)实现。
+Evmongoose是一个异步的、基于事件框架(libev)的集成多种协议的嵌入式网络库，包括：TCP、HTTP、WebSocket、MQTT等等。
+它基于[mongoose](https://github.com/cesanta/mongoose)和[libev](https://github.com/kindy/libev)实现，并且支持Lua API。
 
 Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这个项目之前，我一直都没有找到一个令我满意的基于事件框架的HTTP服务器库。那些HTTP
 服务器库只能loop它自己的对象，不能添加我自己的对象。比如我想基于事件框架监视某个信号（比如SIGINT）或者某个文件。
@@ -13,7 +12,7 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
 * 新特性
     - 使用libev编程
 	- 高度的可定制化
-	- Lua（依赖lua-ev）
+	- Lua API（依赖lua-ev）
 
 * 继承自mongoose
 	- TCP服务器/TCP客户端、UDP服务器/UDP客户端, SSL/TLS
