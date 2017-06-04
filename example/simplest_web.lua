@@ -28,13 +28,11 @@ local function ev_handle(nc, event, msg)
 	return true
 end
 
-local opts = {
-	document_root = "."
-}
+mgr:bind("8000", ev_handle, {proto = "http"})
+print("Listen on http 8000...")
 
-mgr:bind("8000", ev_handle, opts)
-
-print("Listen on 8000...")
+mgr:bind("8443", ev_handle, {proto = "http", ssl_cert = "server.pem", ssl_key = "server.key"})
+print("Listen on https 8443...")
 
 ev.Signal.new(function(loop, sig, revents)
 	loop:unloop()

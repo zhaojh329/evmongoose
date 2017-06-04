@@ -183,6 +183,7 @@ static int lua_mg_bind(lua_State *L)
 	struct mg_bind_opts opts;
 	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *address = luaL_checkstring(L, 2);
+	const char *proto = NULL;
 	const char *err;
 	
 	luaL_checktype(L, 3, LUA_TFUNCTION);
@@ -194,6 +195,10 @@ static int lua_mg_bind(lua_State *L)
 	if (lua_istable(L, 4)) {
 		lua_getfield(L, 4, "document_root");
 		ctx->http_opts.document_root = lua_tostring(L, -1);
+
+		lua_getfield(L, 4, "proto");
+		proto = lua_tostring(L, -1);
+		
 #if MG_ENABLE_SSL	
 		lua_getfield(L, 4, "ssl_cert");
 		opts.ssl_cert = lua_tostring(L, -1);
@@ -218,9 +223,11 @@ static int lua_mg_bind(lua_State *L)
 		luaL_error(L, "%s", err);
 		return 1;
 	}
-	
-	// Set up HTTP server parameters
-	mg_set_protocol_http_websocket(nc);
+
+	if (proto && !strcmp(proto, "http")) {
+		// Set up HTTP server parameters
+		mg_set_protocol_http_websocket(nc);
+	}
 
 	return 0;
 }
