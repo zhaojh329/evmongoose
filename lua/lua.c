@@ -80,7 +80,8 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 		break;
 	}
 
-	case MG_EV_MQTT_SUBACK: {
+	case MG_EV_MQTT_SUBACK:
+	case MG_EV_MQTT_PUBACK: {
 		struct mg_mqtt_message *msg = (struct mg_mqtt_message *)ev_data;
 		lua_pushinteger(L, msg->message_id);
 		lua_setfield(L, -2, "message_id");	
@@ -279,6 +280,18 @@ static int lua_mg_mqtt_subscribe(lua_State *L)
 	mg_mqtt_subscribe(nc, &topic_expr, 1, msg_id);
 	return 0;
 }
+static int lua_mg_mqtt_publish(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	const char *topic = luaL_checkstring(L, 3);
+	const char *payload = luaL_checkstring(L, 4);
+	int msgid = lua_tointeger(L, 5);
+	int qos = lua_tointeger(L, 6);
+	
+	mg_mqtt_publish(nc, topic, msgid, MG_MQTT_QOS(qos), payload, strlen(payload));
+	return 0;
+}
+
 
 static int lua_mg_send_head(lua_State *L)
 {
@@ -335,6 +348,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"set_protocol_mqtt", lua_mg_set_protocol_mqtt},
 	{"send_mqtt_handshake_opt", lua_mg_send_mqtt_handshake_opt},	
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
+	{"mqtt_publish", lua_mg_mqtt_publish},
 	{NULL, NULL}
 };
 	
