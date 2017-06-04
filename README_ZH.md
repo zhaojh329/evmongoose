@@ -35,7 +35,14 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
 # 编译
 ## 在Ubuntu上运行
 ### 安装依赖库
-    sudo apt install libev-dev libssl-dev
+* libev-dev libssl-dev lua5.1 liblua5.1-0-dev
+		sudo apt install libev-dev libssl-dev lua5.1 liblua5.1-0-dev
+
+* lua-ev
+		git clone https://github.com/brimworks/lua-ev.git
+		cd lua-ev
+		cmake . -DINSTALL_CMOD=$(lua -e "for k in string.gmatch(package.cpath .. \";\", \"([^;]+)/..so;\") do if k:sub(1,1) == \"/\" then print(k) break end end")
+		make && sudo make install
     
 ### 安装evmongoose（默认支持HTTPS）
     git clone https://github.com/zhaojh329/evmongoose.git
@@ -43,7 +50,7 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
     mkdir build
     cd build
     cmake ..
-    make
+    make && sudo make install
 
 ### 安装evmongoose（禁止HTTPS）
     git clone https://github.com/zhaojh329/evmongoose.git
@@ -51,12 +58,19 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
     mkdir build
     cd build
     cmake .. -DHTTPS_SUPPORT=OFF
-    make
+    make && sudo make install
 
 ## OpenWRT/LEDE
+	git clone https://github.com/zhaojh329/lua-ev-openwrt.git
+	cp -r lua-ev-openwrt openwrt_dir/package/lua-ev
+	
 	git clone https://github.com/zhaojh329/evmongoose.git
-	cp evmongoose/openwrt/ openwrt_dir/package/evmongoose -r
+	cp -r evmongoose/openwrt openwrt_dir/package/evmongoose
+	
 	cd openwrt_dir
+	./scripts/feeds update -a
+	./scripts/feeds install -a
+	
 	make menuconfig
 	Libraries  --->
 	    Networking  --->
