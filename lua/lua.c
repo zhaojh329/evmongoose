@@ -71,7 +71,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	case MG_EV_CONNECT:
 		lua_call(L, 3, 1);		
 		break;
-	
+
 	case MG_EV_MQTT_CONNACK: {
 		struct mg_mqtt_message *msg = (struct mg_mqtt_message *)ev_data;
 		lua_pushinteger(L, msg->connack_ret_code);
@@ -95,6 +95,39 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 		lua_setfield(L, -2, "topic");
 		lua_pushlstring(L, msg->payload.p, msg->payload.len);
 		lua_setfield(L, -2, "payload");
+		lua_call(L, 3, 1);
+		break;
+	}
+
+	case MG_EV_HTTP_REPLY: {
+		int i;
+		char tmp[128];
+		struct http_message *rsp = (struct http_message *)ev_data;
+	
+		nc->flags |= MG_F_CLOSE_IMMEDIATELY;
+
+		lua_pushinteger(L, rsp->resp_code);
+		lua_setfield(L, -2, "resp_code");
+
+		lua_pushlstring(L, rsp->resp_status_msg.p, rsp->resp_status_msg.len);
+		lua_setfield(L, -2, "resp_status_msg");
+
+		lua_newtable(L);
+
+		for (i = 0; rsp->header_names[i].len > 0; i++) {
+			struct mg_str *h = &rsp->header_names[i], *v = &rsp->header_values[i];
+			if (h->p) {
+				lua_pushlstring(L,v->p, v->len);
+				snprintf(tmp, sizeof(tmp), "%.*s", (int)h->len, h->p);
+				lua_setfield(L, -2, tmp);
+			}
+		}
+		
+		lua_setfield(L, -2, "headers");
+
+		lua_pushlstring(L, rsp->body.p, rsp->body.len);
+		lua_setfield(L, -2, "body");
+		
 		lua_call(L, 3, 1);
 		break;
 	}
@@ -176,18 +209,17 @@ static int lua_mg_bind(lua_State *L)
 	}
 
 	lua_settop(L, 3);
-	ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	ref = luaL_ref(L, LUA_REGISTRYINDEX);	
+	ctx->callback = ref;
 	
 	nc = mg_bind_opt(&ctx->mgr, address, ev_handler, opts);
-	if (nc == NULL) {
+	if (!nc) {
 		luaL_error(L, "%s", err);
 		return 1;
 	}
 	
 	// Set up HTTP server parameters
 	mg_set_protocol_http_websocket(nc);
-
-	ctx->callback = ref;
 
 	return 0;
 }
@@ -223,14 +255,63 @@ static int lua_mg_connect(lua_State *L)
 
 	lua_settop(L, 3);
 	ref = luaL_ref(L, LUA_REGISTRYINDEX);
+	ctx->callback = ref;
 	
 	nc = mg_connect_opt(&ctx->mgr, address, ev_handler, opts);
-	if (nc == NULL) {
+	if (!nc) {
 		luaL_error(L, "%s", err);
 		return 1;
 	}
 
+	return 0;
+}
+
+static int lua_mg_connect_http(lua_State *L)
+{
+	int ref;
+	struct mg_connection *nc;
+	struct mg_connect_opts opts;
+	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
+	const char *url = luaL_checkstring(L, 2);
+	const char *extra_headers = NULL;
+	const char *post_data = NULL;
+	const char *err;
+	
+	luaL_checktype(L, 3, LUA_TFUNCTION);
+	
+	memset(&opts, 0, sizeof(opts));
+
+	opts.error_string = &err;
+	
+	if (lua_istable(L, 4)) {	
+		lua_getfield(L, 4, "ssl_cert");
+		opts.ssl_cert = lua_tostring(L, -1);
+	
+		lua_getfield(L, 4, "ssl_key");
+		opts.ssl_key = lua_tostring(L, -1);
+		
+		lua_getfield(L, 4, "ssl_ca_cert");
+		opts.ssl_ca_cert = lua_tostring(L, -1);
+		
+		lua_getfield(L, 4, "ssl_cipher_suites");
+		opts.ssl_cipher_suites = lua_tostring(L, -1);
+
+		lua_getfield(L, 4, "extra_headers");
+		extra_headers = lua_tostring(L, -1);
+
+		lua_getfield(L, 4, "post_data");
+		post_data = lua_tostring(L, -1);
+	}
+
+	lua_settop(L, 3);
+	ref = luaL_ref(L, LUA_REGISTRYINDEX);
 	ctx->callback = ref;
+
+	nc = mg_connect_http_opt(&ctx->mgr, ev_handler, opts, url, extra_headers, post_data);
+	if (!nc) {
+		luaL_error(L, "%s", err);
+		return 1;
+	}
 
 	return 0;
 }
@@ -347,6 +428,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"print", lua_mg_print},
 	{"print_http_chunk", lua_mg_print_http_chunk},
 	{"connect", lua_mg_connect},
+	{"connect_http", lua_mg_connect_http},
 	{"set_protocol_mqtt", lua_mg_set_protocol_mqtt},
 	{"send_mqtt_handshake_opt", lua_mg_send_mqtt_handshake_opt},	
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
@@ -371,6 +453,9 @@ int luaopen_evmongoose(lua_State *L)
 
 	lua_pushinteger(L, MG_EV_CONNECT);
     lua_setfield(L, -2, "MG_EV_CONNECT");
+
+	lua_pushinteger(L, MG_EV_HTTP_REPLY);
+	lua_setfield(L, -2, "MG_EV_HTTP_REPLY");	
 
 	lua_pushinteger(L, MG_EV_CLOSE);
     lua_setfield(L, -2, "MG_EV_CLOSE");
