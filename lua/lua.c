@@ -194,7 +194,7 @@ static int lua_mg_bind(lua_State *L)
 	if (lua_istable(L, 4)) {
 		lua_getfield(L, 4, "document_root");
 		ctx->http_opts.document_root = lua_tostring(L, -1);
-	
+#if MG_ENABLE_SSL	
 		lua_getfield(L, 4, "ssl_cert");
 		opts.ssl_cert = lua_tostring(L, -1);
 	
@@ -206,6 +206,7 @@ static int lua_mg_bind(lua_State *L)
 		
 		lua_getfield(L, 4, "ssl_cipher_suites");
 		opts.ssl_cipher_suites = lua_tostring(L, -1);
+#endif		
 	}
 
 	lua_settop(L, 3);
@@ -239,7 +240,8 @@ static int lua_mg_connect(lua_State *L)
 
 	opts.error_string = &err;
 	
-	if (lua_istable(L, 4)) {	
+	if (lua_istable(L, 4)) {
+#if MG_ENABLE_SSL		
 		lua_getfield(L, 4, "ssl_cert");
 		opts.ssl_cert = lua_tostring(L, -1);
 	
@@ -251,6 +253,7 @@ static int lua_mg_connect(lua_State *L)
 		
 		lua_getfield(L, 4, "ssl_cipher_suites");
 		opts.ssl_cipher_suites = lua_tostring(L, -1);
+#endif		
 	}
 
 	lua_settop(L, 3);
@@ -283,7 +286,8 @@ static int lua_mg_connect_http(lua_State *L)
 
 	opts.error_string = &err;
 	
-	if (lua_istable(L, 4)) {	
+	if (lua_istable(L, 4)) {
+#if MG_ENABLE_SSL		
 		lua_getfield(L, 4, "ssl_cert");
 		opts.ssl_cert = lua_tostring(L, -1);
 	
@@ -295,7 +299,7 @@ static int lua_mg_connect_http(lua_State *L)
 		
 		lua_getfield(L, 4, "ssl_cipher_suites");
 		opts.ssl_cipher_suites = lua_tostring(L, -1);
-
+#endif
 		lua_getfield(L, 4, "extra_headers");
 		extra_headers = lua_tostring(L, -1);
 
@@ -492,4 +496,3 @@ int luaopen_evmongoose(lua_State *L)
 	
     return 1;
 }
-

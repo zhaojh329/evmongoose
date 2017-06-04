@@ -67,7 +67,7 @@ define Build/InstallDev
 endef
 
 define Package/evmongoose/install
-	$(INSTALL_DIR) $(1)/usr/lib /usr/lib/lua
+	$(INSTALL_DIR) $(1)/usr/lib $(1)/usr/lib/lua
 	$(CP) $(PKG_BUILD_DIR)/libevmongoose.so $(1)/usr/lib
 	$(CP) $(PKG_BUILD_DIR)/lua/evmongoose.so $(1)/usr/lib/lua
 endef
