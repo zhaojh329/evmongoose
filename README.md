@@ -38,13 +38,15 @@ could not add my own objects. For example, I want to monitor a signal or a file 
 ## For Ubuntu
 ### Install dependency Libraries
 * libev-dev libssl-dev lua5.1 liblua5.1-0-dev
-		sudo apt install libev-dev libssl-dev lua5.1 liblua5.1-0-dev
+
+	sudo apt install libev-dev libssl-dev lua5.1 liblua5.1-0-dev
 
 * lua-ev
-		git clone https://github.com/brimworks/lua-ev.git
-		cd lua-ev
-		cmake . -DINSTALL_CMOD=$(lua -e "for k in string.gmatch(package.cpath .. \";\", \"([^;]+)/..so;\") do if k:sub(1,1) == \"/\" then print(k) break end end")
-		make && sudo make install
+
+	git clone https://github.com/brimworks/lua-ev.git
+	cd lua-ev
+	cmake . -DINSTALL_CMOD=$(lua -e "for k in string.gmatch(package.cpath .. \";\", \"([^;]+)/..so;\") do if k:sub(1,1) == \"/\" then print(k) break end end")
+	make && sudo make install
     
 ### Install Evmongoose(HTTPS Support Default)
     git clone https://github.com/zhaojh329/evmongoose.git

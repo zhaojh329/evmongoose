@@ -36,13 +36,15 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
 ## 在Ubuntu上运行
 ### 安装依赖库
 * libev-dev libssl-dev lua5.1 liblua5.1-0-dev
-		sudo apt install libev-dev libssl-dev lua5.1 liblua5.1-0-dev
+	
+	sudo apt install libev-dev libssl-dev lua5.1 liblua5.1-0-dev
 
 * lua-ev
-		git clone https://github.com/brimworks/lua-ev.git
-		cd lua-ev
-		cmake . -DINSTALL_CMOD=$(lua -e "for k in string.gmatch(package.cpath .. \";\", \"([^;]+)/..so;\") do if k:sub(1,1) == \"/\" then print(k) break end end")
-		make && sudo make install
+
+	git clone https://github.com/brimworks/lua-ev.git
+	cd lua-ev
+	cmake . -DINSTALL_CMOD=$(lua -e "for k in string.gmatch(package.cpath .. \";\", \"([^;]+)/..so;\") do if k:sub(1,1) == \"/\" then print(k) break end end")
+	make && sudo make install
     
 ### 安装evmongoose（默认支持HTTPS）
     git clone https://github.com/zhaojh329/evmongoose.git
