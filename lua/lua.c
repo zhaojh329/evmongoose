@@ -637,13 +637,13 @@ static int lua_forkpty(lua_State *L)
 	} else {
 		pid = forkpty(&pty, NULL, NULL, NULL);
 	}
-	if (pid < 0) {
-		lua_pushnil(L);
-		lua_pushstring(L, strerror(errno));
-	} else {
-		lua_pushinteger(L, pid);
-		lua_pushinteger(L, pty);
-	}
+	
+	if (pid < 0) 
+		luaL_error(L, strerror(errno));
+
+	lua_pushinteger(L, pid);
+	lua_pushinteger(L, pty);
+	
 	return 2;
 }
 
