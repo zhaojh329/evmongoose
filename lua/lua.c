@@ -1,4 +1,5 @@
 #include "mongoose.h"
+#include "list.h"
 #include <lauxlib.h>
 #include <lualib.h>
 
@@ -14,21 +15,46 @@
 #define UNINITIALIZED_DEFAULT_LOOP (struct ev_loop*)1
 #define MONGOOSE_MT "mongoose"
 
+struct mg_bind_ctx {
+	struct mg_serve_http_opts http_opts;
+	struct mg_connection *nc;
+	struct list_head node;
+};
+
 struct mg_context {
     struct mg_mgr mgr;
     lua_State *L;
 	int callback;
+	struct list_head bind_ctx_list;
 	int initialized;
-	struct mg_serve_http_opts http_opts;
 };
+
+static struct mg_bind_ctx *find_bind_ctx(struct mg_context *ctx, struct mg_connection *nc)
+{
+	struct mg_bind_ctx *bind = NULL;
+	
+	list_for_each_entry(bind, &ctx->bind_ctx_list, node) {
+		if (bind->nc == nc)
+			return bind;
+	}
+	return NULL;
+}
 
 static int mg_ctx_destroy(lua_State *L)
 {
 	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	
 	if (ctx->initialized) {
-		ctx->initialized = 0;
+		struct mg_bind_ctx *bind, *tmp;
+	
+		list_for_each_entry_safe(bind, tmp, &ctx->bind_ctx_list, node) {
+			list_del(&bind->node);
+			free(bind);
+		}
+	
 		mg_mgr_free(&ctx->mgr);
+
+		ctx->initialized = 0;
 	}
     return 0;
 }
@@ -39,7 +65,9 @@ static int mg_ctx_init(lua_State *L)
 	
 	ctx->L = L;
 	ctx->initialized = 1;
-	
+
+	INIT_LIST_HEAD(&ctx->bind_ctx_list);
+		
     mg_mgr_init(&ctx->mgr, NULL);
     luaL_getmetatable(L, MONGOOSE_MT);
     lua_setmetatable(L, -2);
@@ -133,6 +161,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	}
 
 	case MG_EV_HTTP_REQUEST: {
+		struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc->listener);
 		int i;
 		char tmp[128];
 		struct http_message *hm = (struct http_message *)ev_data;
@@ -165,14 +194,14 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 		lua_call(L, 3, 1);
 
 		if (!lua_toboolean(L, -1))
-			mg_serve_http(nc, hm, ctx->http_opts); /* Serve static content */
+			mg_serve_http(nc, hm, bind->http_opts); /* Serve static content */
 
 		break;
 	}
 	default:
 		break;
 	}
-
+	
 	lua_settop(L, 0);
 }
 
@@ -183,18 +212,22 @@ static int lua_mg_bind(lua_State *L)
 	struct mg_bind_opts opts;
 	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *address = luaL_checkstring(L, 2);
+	struct mg_bind_ctx *bind = NULL;
 	const char *proto = NULL;
 	const char *err;
 	
 	luaL_checktype(L, 3, LUA_TFUNCTION);
 	
 	memset(&opts, 0, sizeof(opts));
-
 	opts.error_string = &err;
+
+	bind = calloc(1, sizeof(struct mg_bind_ctx));
+	if (!bind)
+		luaL_error(L, "%s", strerror(errno));
 	
 	if (lua_istable(L, 4)) {
 		lua_getfield(L, 4, "document_root");
-		ctx->http_opts.document_root = lua_tostring(L, -1);
+		bind->http_opts.document_root = lua_tostring(L, -1);
 
 		lua_getfield(L, 4, "proto");
 		proto = lua_tostring(L, -1);
@@ -219,10 +252,12 @@ static int lua_mg_bind(lua_State *L)
 	ctx->callback = ref;
 	
 	nc = mg_bind_opt(&ctx->mgr, address, ev_handler, opts);
-	if (!nc) {
+	if (!nc)
 		luaL_error(L, "%s", err);
-		return 1;
-	}
+
+	bind->nc = nc;
+
+	list_add(&bind->node, &ctx->bind_ctx_list);
 
 	if (proto && !strcmp(proto, "http")) {
 		// Set up HTTP server parameters
