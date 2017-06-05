@@ -21,6 +21,12 @@ struct mg_bind_ctx {
 	struct list_head node;
 };
 
+struct mg_resolve_async_ctx {
+	lua_State *L;
+	int callback;
+	char domain[128];
+};
+
 struct mg_context {
     struct mg_mgr mgr;
     lua_State *L;
@@ -418,6 +424,61 @@ static int lua_mg_connect_http(lua_State *L)
 	return 0;
 }
 
+static void dns_resolve_cb(struct mg_dns_message *msg, void *data, enum mg_resolve_err e)
+{
+	struct mg_resolve_async_ctx *ctx = (struct mg_resolve_async_ctx *)data;
+	lua_State *L = ctx->L;
+	int i = 1;
+	struct in_addr ina;
+	struct mg_dns_resource_record *rr = NULL;		
+
+	lua_rawgeti(L, LUA_REGISTRYINDEX , ctx->callback);
+
+	lua_pushstring(L, ctx->domain);
+
+	lua_newtable(L);
+	
+	if (!msg)
+		goto ret;
+
+	while (1) {
+		rr = mg_dns_next_record(msg, MG_DNS_A_RECORD, rr);
+		if (!rr)
+			break;
+
+		if (mg_dns_parse_record_data(msg, rr, &ina, sizeof(ina)))
+			break;
+
+		lua_pushstring(L, inet_ntoa(ina));
+		lua_rawseti(L, -2, i++);
+	}
+	
+ret:
+	lua_call(L, 2, 0);
+}
+
+static int lua_mg_resolve_async(lua_State *L)
+{
+	int ref;
+	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
+	const char *domain = luaL_checkstring(L, 2);
+	struct mg_resolve_async_ctx *data = NULL;
+	
+	luaL_checktype(L, 3, LUA_TFUNCTION);
+	ref = luaL_ref(L, LUA_REGISTRYINDEX);
+
+	data = calloc(1, sizeof(struct mg_resolve_async_ctx ));
+	if (!data)
+		luaL_error(L, "%s", strerror(errno));
+
+	data->L = L;
+	data->callback = ref;
+	strcpy(data->domain, domain);
+	
+	mg_resolve_async(&ctx->mgr, domain, MG_DNS_A_RECORD, dns_resolve_cb, data);
+	return 0;
+}
+
 static int lua_mg_set_protocol_mqtt(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
@@ -543,7 +604,6 @@ static int lua_mg_send(lua_State *L)
 	return 0;
 }
 
-
 #if LUA_VERSION_NUM==501
 /*
 ** Adapted from Lua 5.2
@@ -572,6 +632,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"print_http_chunk", lua_mg_print_http_chunk},
 	{"connect", lua_mg_connect},
 	{"connect_http", lua_mg_connect_http},
+	{"resolve_async", lua_mg_resolve_async},
 	{"set_protocol_mqtt", lua_mg_set_protocol_mqtt},
 	{"send_mqtt_handshake_opt", lua_mg_send_mqtt_handshake_opt},	
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
