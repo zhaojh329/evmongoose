@@ -433,9 +433,9 @@ static void dns_resolve_cb(struct mg_dns_message *msg, void *data, enum mg_resol
 	struct mg_dns_resource_record *rr = NULL;		
 
 	lua_rawgeti(L, LUA_REGISTRYINDEX , ctx->callback);
-
+	
 	lua_pushstring(L, ctx->domain);
-
+	
 	lua_newtable(L);
 	
 	if (!msg)
@@ -454,6 +454,7 @@ static void dns_resolve_cb(struct mg_dns_message *msg, void *data, enum mg_resol
 	}
 	
 ret:
+	free(ctx);
 	lua_call(L, 2, 0);
 }
 
