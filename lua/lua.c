@@ -188,17 +188,28 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 
 	switch (ev) {
 	case MG_EV_CLOSE:
-	case MG_EV_CONNECT:
 	case MG_EV_WEBSOCKET_HANDSHAKE_DONE:
 		lua_call(L, 3, 1);
 		break;
+	
+	case MG_EV_CONNECT: {
+		int err = *(int *) ev_data;
+		lua_pushboolean(L, !err);
+		lua_setfield(L, -2, "connected");
 
+		lua_pushstring(L, strerror(err));
+		lua_setfield(L, -2, "err");
+		
+		lua_call(L, 3, 1);
+		break;
+	}
+	
 	case MG_EV_RECV: {		
 		struct mbuf *io = &nc->recv_mbuf;
 
 		lua_pushlstring(L, io->buf, io->len);
 		lua_setfield(L, -2, "data");
-		mbuf_remove(io, io->len);
+
 		lua_call(L, 3, 1);
 
 		if (lua_toboolean(L, -1))
