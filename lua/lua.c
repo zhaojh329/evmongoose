@@ -487,6 +487,21 @@ static int lua_mg_send_head(lua_State *L)
 	return 0;
 }
 
+static int lua_mg_http_send_redirect(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	int status_code = luaL_checkint(L, 3);
+	const char *location = luaL_checkstring(L, 4);
+	const char *extra_headers = lua_tostring(L, 5);
+
+	if (status_code != 301 && status_code != 302)
+		luaL_error(L, "\"status_code\" should be either 301 or 302");
+	
+	mg_http_send_redirect(nc, status_code, mg_mk_str(location), mg_mk_str(extra_headers));
+
+	return 0;
+}
+
 static int lua_mg_print(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
@@ -528,6 +543,7 @@ static int lua_mg_send(lua_State *L)
 	return 0;
 }
 
+
 #if LUA_VERSION_NUM==501
 /*
 ** Adapted from Lua 5.2
@@ -551,6 +567,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"destroy", mg_ctx_destroy},
 	{"bind", lua_mg_bind},
 	{"send_head", lua_mg_send_head},
+	{"http_send_redirect", lua_mg_http_send_redirect},
 	{"print", lua_mg_print},
 	{"print_http_chunk", lua_mg_print_http_chunk},
 	{"connect", lua_mg_connect},
