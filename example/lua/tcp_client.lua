@@ -26,7 +26,7 @@ ev.Signal.new(function(loop, sig, revents)
 	loop:unloop()
 end, ev.SIGINT):start(loop)
 
-ev.IO.new(function()
+ev.IO.new(function(loop, w, revents)
 	local data = io.read("*l")
 	if global_nc then
 		print("send:", data)
