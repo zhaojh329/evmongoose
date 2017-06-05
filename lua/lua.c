@@ -190,9 +190,22 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	case MG_EV_CLOSE:
 	case MG_EV_CONNECT:
 	case MG_EV_WEBSOCKET_HANDSHAKE_DONE:
-		lua_call(L, 3, 1);		
+		lua_call(L, 3, 1);
 		break;
 
+	case MG_EV_RECV: {		
+		struct mbuf *io = &nc->recv_mbuf;
+
+		lua_pushlstring(L, io->buf, io->len);
+		lua_setfield(L, -2, "data");
+		mbuf_remove(io, io->len);
+		lua_call(L, 3, 1);
+
+		if (lua_toboolean(L, -1))
+			mbuf_remove(io, io->len);
+		break;
+	}
+		
 	case MG_EV_MQTT_CONNACK: {
 		struct mg_mqtt_message *msg = (struct mg_mqtt_message *)ev_data;
 		lua_pushinteger(L, msg->connack_ret_code);
@@ -490,7 +503,17 @@ static int lua_mg_send_websocket_frame(lua_State *L)
 	const char *buf = luaL_checklstring(L, 3, &len);
 	int op = lua_tointeger(L, 4) || WEBSOCKET_OP_TEXT;
 	
-	mg_send_websocket_frame(nc, op, buf, strlen(buf));
+	mg_send_websocket_frame(nc, op, buf, len);
+	return 0;
+}
+
+static int lua_mg_send(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	size_t len = 0;
+	const char *buf = luaL_checklstring(L, 3, &len);
+
+	mg_send(nc, buf, len);
 	return 0;
 }
 
@@ -526,6 +549,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
 	{"mqtt_publish", lua_mg_mqtt_publish},
 	{"send_websocket_frame", lua_mg_send_websocket_frame},
+	{"send", lua_mg_send},
 	{NULL, NULL}
 };
 	
@@ -588,6 +612,9 @@ int luaopen_evmongoose(lua_State *L)
 
 	lua_pushinteger(L, MG_EV_MQTT_CONNACK_NOT_AUTHORIZED);
     lua_setfield(L, -2, "MG_EV_MQTT_CONNACK_NOT_AUTHORIZED");
+	
+	lua_pushinteger(L, MG_EV_RECV);
+    lua_setfield(L, -2, "MG_EV_RECV");
 
 	lua_pushinteger(L, WEBSOCKET_OP_TEXT);
     lua_setfield(L, -2, "WEBSOCKET_OP_TEXT");
