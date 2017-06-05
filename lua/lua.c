@@ -81,6 +81,98 @@ static int mg_ctx_init(lua_State *L)
 	return 1;
 }
 
+static void ev_http_reply(struct mg_context *ctx, struct mg_connection *nc, void *ev_data)
+{
+	lua_State *L = ctx->L;
+	struct http_message *rsp = (struct http_message *)ev_data;
+	int i;
+	char tmp[128];
+
+	nc->flags |= MG_F_CLOSE_IMMEDIATELY;
+
+	lua_pushinteger(L, rsp->resp_code);
+	lua_setfield(L, -2, "resp_code");
+
+	lua_pushlstring(L, rsp->resp_status_msg.p, rsp->resp_status_msg.len);
+	lua_setfield(L, -2, "resp_status_msg");
+
+	lua_newtable(L);
+
+	for (i = 0; rsp->header_names[i].len > 0; i++) {
+		struct mg_str *h = &rsp->header_names[i], *v = &rsp->header_values[i];
+		if (h->p) {
+			lua_pushlstring(L,v->p, v->len);
+			snprintf(tmp, sizeof(tmp), "%.*s", (int)h->len, h->p);
+			lua_setfield(L, -2, tmp);
+		}
+	}
+	
+	lua_setfield(L, -2, "headers");
+
+	lua_pushlstring(L, rsp->body.p, rsp->body.len);
+	lua_setfield(L, -2, "body");
+	
+	lua_call(L, 3, 1);
+}
+
+static void ev_http_request(struct mg_context *ctx, struct mg_connection *nc, void *ev_data)
+{
+	lua_State *L = ctx->L;
+	struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc->listener);
+	struct http_message *hm = (struct http_message *)ev_data;
+	int i;
+	char tmp[128];
+
+	lua_pushlstring(L, hm->method.p, hm->method.len);
+	lua_setfield(L, -2, "method");
+	
+	lua_pushlstring(L, hm->uri.p, hm->uri.len);
+	lua_setfield(L, -2, "uri");
+	
+	lua_pushlstring(L, hm->proto.p, hm->proto.len);
+	lua_setfield(L, -2, "proto");
+	
+	lua_pushlstring(L, hm->query_string.p, hm->query_string.len);
+	lua_setfield(L, -2, "query_string");
+
+	lua_newtable(L);
+
+	for (i = 0; hm->header_names[i].len > 0; i++) {
+		struct mg_str *h = &hm->header_names[i], *v = &hm->header_values[i];
+		if (h->p) {
+			lua_pushlstring(L,v->p, v->len);
+			snprintf(tmp, sizeof(tmp), "%.*s", (int)h->len, h->p);
+			lua_setfield(L, -2, tmp);
+		}
+	}
+	
+	lua_setfield(L, -2, "headers");
+
+	lua_call(L, 3, 1);
+
+	if (!lua_toboolean(L, -1))
+		mg_serve_http(nc, hm, bind->http_opts); /* Serve static content */
+}
+
+static void ev_websocket_frame(struct mg_context *ctx, struct mg_connection *nc, void *ev_data)
+{
+	lua_State *L = ctx->L;
+	struct websocket_message *wm = (struct websocket_message *)ev_data;
+
+	lua_pushlstring(L, (const char *)wm->data, wm->size);
+	lua_setfield(L, -2, "data");
+
+	if (wm->flags & WEBSOCKET_OP_TEXT) {
+		lua_pushinteger(L, WEBSOCKET_OP_TEXT);
+		lua_setfield(L, -2, "op");
+	} else if (wm->flags & WEBSOCKET_OP_BINARY) {
+		lua_pushinteger(L, WEBSOCKET_OP_BINARY);
+		lua_setfield(L, -2, "op");
+	}
+
+	lua_call(L, 3, 1);
+}
+
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
 	struct mg_mgr *mgr = nc->mgr;
@@ -97,6 +189,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	switch (ev) {
 	case MG_EV_CLOSE:
 	case MG_EV_CONNECT:
+	case MG_EV_WEBSOCKET_HANDSHAKE_DONE:
 		lua_call(L, 3, 1);		
 		break;
 
@@ -127,77 +220,18 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 		break;
 	}
 
-	case MG_EV_HTTP_REPLY: {
-		int i;
-		char tmp[128];
-		struct http_message *rsp = (struct http_message *)ev_data;
+	case MG_EV_HTTP_REQUEST:
+		ev_http_request(ctx, nc, ev_data);
+		break;
+
+	case MG_EV_HTTP_REPLY:
+		ev_http_reply(ctx, nc, ev_data);		
+		break;
+
+	case MG_EV_WEBSOCKET_FRAME:
+		ev_websocket_frame(ctx, nc, ev_data);
+		break;
 	
-		nc->flags |= MG_F_CLOSE_IMMEDIATELY;
-
-		lua_pushinteger(L, rsp->resp_code);
-		lua_setfield(L, -2, "resp_code");
-
-		lua_pushlstring(L, rsp->resp_status_msg.p, rsp->resp_status_msg.len);
-		lua_setfield(L, -2, "resp_status_msg");
-
-		lua_newtable(L);
-
-		for (i = 0; rsp->header_names[i].len > 0; i++) {
-			struct mg_str *h = &rsp->header_names[i], *v = &rsp->header_values[i];
-			if (h->p) {
-				lua_pushlstring(L,v->p, v->len);
-				snprintf(tmp, sizeof(tmp), "%.*s", (int)h->len, h->p);
-				lua_setfield(L, -2, tmp);
-			}
-		}
-		
-		lua_setfield(L, -2, "headers");
-
-		lua_pushlstring(L, rsp->body.p, rsp->body.len);
-		lua_setfield(L, -2, "body");
-		
-		lua_call(L, 3, 1);
-		break;
-	}
-
-	case MG_EV_HTTP_REQUEST: {
-		struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc->listener);
-		int i;
-		char tmp[128];
-		struct http_message *hm = (struct http_message *)ev_data;
-		
-		lua_pushlstring(L, hm->method.p, hm->method.len);
-		lua_setfield(L, -2, "method");
-		
-		lua_pushlstring(L, hm->uri.p, hm->uri.len);
-		lua_setfield(L, -2, "uri");
-		
-		lua_pushlstring(L, hm->proto.p, hm->proto.len);
-		lua_setfield(L, -2, "proto");
-		
-		lua_pushlstring(L, hm->query_string.p, hm->query_string.len);
-		lua_setfield(L, -2, "query_string");
-
-		lua_newtable(L);
-
-		for (i = 0; hm->header_names[i].len > 0; i++) {
-			struct mg_str *h = &hm->header_names[i], *v = &hm->header_values[i];
-			if (h->p) {
-				lua_pushlstring(L,v->p, v->len);
-				snprintf(tmp, sizeof(tmp), "%.*s", (int)h->len, h->p);
-				lua_setfield(L, -2, tmp);
-			}
-		}
-		
-		lua_setfield(L, -2, "headers");
-		
-		lua_call(L, 3, 1);
-
-		if (!lua_toboolean(L, -1))
-			mg_serve_http(nc, hm, bind->http_opts); /* Serve static content */
-
-		break;
-	}
 	default:
 		break;
 	}
@@ -259,10 +293,8 @@ static int lua_mg_bind(lua_State *L)
 
 	list_add(&bind->node, &ctx->bind_ctx_list);
 
-	if (proto && !strcmp(proto, "http")) {
-		// Set up HTTP server parameters
+	if (proto && (!strcmp(proto, "http") || !strcmp(proto, "websocket")))
 		mg_set_protocol_http_websocket(nc);
-	}
 
 	return 0;
 }
@@ -426,6 +458,7 @@ static int lua_mg_send_head(lua_State *L)
 	int status_code = luaL_checkint(L, 3);
 	int64_t content_length = luaL_checkint(L, 4);
 	const char *extra_headers = lua_tostring(L, 5);
+	
 	mg_send_head(nc, status_code, content_length, extra_headers);
 	return 0;
 }
@@ -435,6 +468,7 @@ static int lua_mg_print(lua_State *L)
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
 	size_t len = 0;
 	const char *buf = luaL_checklstring(L, 3, &len);
+	
 	mg_send(nc, buf, len);
 	return 0;
 }
@@ -444,7 +478,19 @@ static int lua_mg_print_http_chunk(lua_State *L)
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
 	size_t len = 0;
 	const char *buf = luaL_checklstring(L, 3, &len);
+	
 	mg_send_http_chunk(nc, buf, len);
+	return 0;
+}
+
+static int lua_mg_send_websocket_frame(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	size_t len = 0;
+	const char *buf = luaL_checklstring(L, 3, &len);
+	int op = lua_tointeger(L, 4) || WEBSOCKET_OP_TEXT;
+	
+	mg_send_websocket_frame(nc, op, buf, strlen(buf));
 	return 0;
 }
 
@@ -479,6 +525,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"send_mqtt_handshake_opt", lua_mg_send_mqtt_handshake_opt},	
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
 	{"mqtt_publish", lua_mg_mqtt_publish},
+	{"send_websocket_frame", lua_mg_send_websocket_frame},
 	{NULL, NULL}
 };
 	
@@ -496,6 +543,12 @@ int luaopen_evmongoose(lua_State *L)
 
 	lua_pushinteger(L, MG_EV_HTTP_REQUEST);
     lua_setfield(L, -2, "MG_EV_HTTP_REQUEST");
+
+	lua_pushinteger(L, MG_EV_WEBSOCKET_HANDSHAKE_DONE);
+    lua_setfield(L, -2, "MG_EV_WEBSOCKET_HANDSHAKE_DONE");
+
+	lua_pushinteger(L, MG_EV_WEBSOCKET_FRAME);
+    lua_setfield(L, -2, "MG_EV_WEBSOCKET_FRAME");
 
 	lua_pushinteger(L, MG_EV_CONNECT);
     lua_setfield(L, -2, "MG_EV_CONNECT");
@@ -535,6 +588,12 @@ int luaopen_evmongoose(lua_State *L)
 
 	lua_pushinteger(L, MG_EV_MQTT_CONNACK_NOT_AUTHORIZED);
     lua_setfield(L, -2, "MG_EV_MQTT_CONNACK_NOT_AUTHORIZED");
+
+	lua_pushinteger(L, WEBSOCKET_OP_TEXT);
+    lua_setfield(L, -2, "WEBSOCKET_OP_TEXT");
+	
+	lua_pushinteger(L, WEBSOCKET_OP_BINARY);
+    lua_setfield(L, -2, "WEBSOCKET_OP_BINARY");
 	
     return 1;
 }
