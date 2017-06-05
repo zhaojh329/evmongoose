@@ -30,7 +30,7 @@ if(LUA_SUPPORT)
 	add_library(evmongoose-lua MODULE lua.c)
 	set_target_properties(evmongoose-lua PROPERTIES OUTPUT_NAME evmongoose PREFIX "")
 		
-	target_link_libraries(evmongoose-lua evmongoose)
+	target_link_libraries(evmongoose-lua evmongoose util)
 
 	install(TARGETS evmongoose-lua
 		LIBRARY DESTINATION ${LUAPATH}

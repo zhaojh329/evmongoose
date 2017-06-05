@@ -2,6 +2,7 @@
 #include "list.h"
 #include <lauxlib.h>
 #include <lualib.h>
+#include <pty.h>
 
 #ifndef container_of
 #define container_of(ptr, type, member)					\
@@ -605,6 +606,47 @@ static int lua_mg_send(lua_State *L)
 	return 0;
 }
 
+static int lua_forkpty(lua_State *L)
+{
+	pid_t pid;
+	int pty;
+	
+	if (lua_gettop(L)) {
+		struct termios t;
+			
+		luaL_checktype(L, 1, LUA_TTABLE);
+		
+		memset(&t, 0, sizeof(t));
+		
+		lua_getfield(L, 1, "iflag"); t.c_iflag = luaL_optinteger(L, -1, 0);
+		lua_getfield(L, 1, "oflag"); t.c_oflag = luaL_optinteger(L, -1, 0);
+		lua_getfield(L, 1, "cflag"); t.c_cflag = luaL_optinteger(L, -1, 0);
+		lua_getfield(L, 1, "lflag"); t.c_lflag = luaL_optinteger(L, -1, 0);
+		
+		lua_getfield(L, 1, "cc");
+		if (!lua_isnoneornil(L, -1)) {
+			luaL_checktype(L, -1, LUA_TTABLE);
+			for (int i = 0; i < NCCS; i++) {
+				lua_pushinteger(L, i);
+				lua_gettable(L, -2);
+				t.c_cc[i] = luaL_optinteger(L, -1, 0);
+				lua_pop(L, 1);
+			}
+		}
+		pid = forkpty(&pty, NULL, &t, NULL);
+	} else {
+		pid = forkpty(&pty, NULL, NULL, NULL);
+	}
+	if (pid < 0) {
+		lua_pushnil(L);
+		lua_pushstring(L, strerror(errno));
+	} else {
+		lua_pushinteger(L, pid);
+		lua_pushinteger(L, pty);
+	}
+	return 2;
+}
+
 #if LUA_VERSION_NUM==501
 /*
 ** Adapted from Lua 5.2
@@ -652,8 +694,12 @@ int luaopen_evmongoose(lua_State *L)
     luaL_setfuncs(L, mongoose_meta, 0);
 
     lua_createtable(L, 0, 1);
+	
     lua_pushcfunction(L, mg_ctx_init);
     lua_setfield(L, -2, "init");
+
+	lua_pushcfunction(L, lua_forkpty);
+    lua_setfield(L, -2, "forkpty");
 
 	lua_pushinteger(L, MG_EV_HTTP_REQUEST);
     lua_setfield(L, -2, "MG_EV_HTTP_REQUEST");
