@@ -1,11 +1,11 @@
 #!/usr/bin/lua
 
 local ev = require("ev")
-local evmongoose = require("evmongoose")
+local evmg = require("evmongoose")
 --local loop = ev.Loop.default
 local loop = ev.Loop.new()
 
-local mgr = evmongoose.init(loop)
+local mgr = evmg.init(loop)
 
 local function dns_resolve_cb(domain, ip)
 	print(domain, "parsed:")

@@ -1,14 +1,14 @@
 #!/usr/bin/lua
 
 local ev = require("ev")
-local evmongoose = require("evmongoose")
+local evmg = require("evmongoose")
 --local loop = ev.Loop.default
 local loop = ev.Loop.new()
 
-local mgr = evmongoose.init(loop)
+local mgr = evmg.init(loop)
 
 local function ev_handle(nc, event, msg)
-	if event ~= evmongoose.MG_EV_HTTP_REQUEST or msg.uri ~= "/luatest" then
+	if event ~= evmg.MG_EV_HTTP_REQUEST or msg.uri ~= "/luatest" then
 		return false
 	end
 

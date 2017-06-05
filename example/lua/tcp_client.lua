@@ -1,19 +1,19 @@
 #!/usr/bin/lua
 
 local ev = require("ev")
-local evmongoose = require("evmongoose")
+local evmg = require("evmongoose")
 --local loop = ev.Loop.default
 local loop = ev.Loop.new()
 
-local mgr = evmongoose.init(loop)
+local mgr = evmg.init(loop)
 
 -- must be return true
 local global_nc = nil
 local function ev_handle(nc, event, msg)
-	if event == evmongoose.MG_EV_CONNECT then
+	if event == evmg.MG_EV_CONNECT then
 		print("connect ", msg.connected, msg.err)
 		if msg.connected then global_nc = nc end
-	elseif event == evmongoose.MG_EV_RECV then
+	elseif event == evmg.MG_EV_RECV then
 		print("recv:", msg.data)
 	end
 

@@ -1,16 +1,16 @@
 #!/usr/bin/lua
 
 local ev = require("ev")
-local evmongoose = require("evmongoose")
+local evmg = require("evmongoose")
 --local loop = ev.Loop.default
 local loop = ev.Loop.new()
 
-local mgr = evmongoose.init(loop)
+local mgr = evmg.init(loop)
 
 local function ev_handle(nc, event, msg)
-	if event == evmongoose.MG_EV_CONNECT then
+	if event == evmg.MG_EV_CONNECT then
 		print("connect ", msg.connected, msg.err)
-	elseif event == evmongoose.MG_EV_HTTP_REPLY then
+	elseif event == evmg.MG_EV_HTTP_REPLY then
 		print("resp_code:", msg.resp_code)
 		print("resp_status_msg:", msg.resp_status_msg)
 		for k, v in pairs(msg.headers) do
