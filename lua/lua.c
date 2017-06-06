@@ -198,6 +198,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 
 	switch (ev) {
 	case MG_EV_CLOSE:
+	case MG_EV_WEBSOCKET_HANDSHAKE_DONE:
 		lua_call(L, 3, 1);
 		break;
 	
@@ -593,7 +594,10 @@ static int lua_mg_send_websocket_frame(lua_State *L)
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
 	size_t len = 0;
 	const char *buf = luaL_checklstring(L, 3, &len);
-	int op = lua_tointeger(L, 4) || WEBSOCKET_OP_TEXT;
+	int op = lua_tointeger(L, 4);
+
+	if (!op)
+		op = WEBSOCKET_OP_TEXT;
 	
 	mg_send_websocket_frame(nc, op, buf, len);
 	return 0;
@@ -709,6 +713,9 @@ int luaopen_evmongoose(lua_State *L)
 
 	lua_pushinteger(L, MG_EV_WEBSOCKET_HANDSHAKE_REQUEST);
     lua_setfield(L, -2, "MG_EV_WEBSOCKET_HANDSHAKE_REQUEST");
+
+	lua_pushinteger(L, MG_EV_WEBSOCKET_HANDSHAKE_DONE);
+    lua_setfield(L, -2, "MG_EV_WEBSOCKET_HANDSHAKE_DONE");
 
 	lua_pushinteger(L, MG_EV_WEBSOCKET_FRAME);
     lua_setfield(L, -2, "MG_EV_WEBSOCKET_FRAME");
