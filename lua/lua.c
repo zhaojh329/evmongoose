@@ -157,6 +157,9 @@ static void ev_http_request(struct mg_context *ctx, struct mg_connection *nc, vo
 
 	lua_call(L, 3, 1);
 
+	if (nc->flags & MG_F_IS_WEBSOCKET)
+		return;
+	
 	if (!lua_toboolean(L, -1))
 		mg_serve_http(nc, hm, bind->http_opts); /* Serve static content */
 }
@@ -195,7 +198,6 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 
 	switch (ev) {
 	case MG_EV_CLOSE:
-	case MG_EV_WEBSOCKET_HANDSHAKE_DONE:
 		lua_call(L, 3, 1);
 		break;
 	
@@ -252,6 +254,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	}
 
 	case MG_EV_HTTP_REQUEST:
+	case MG_EV_WEBSOCKET_HANDSHAKE_REQUEST:
 		ev_http_request(ctx, nc, ev_data);
 		break;
 
@@ -324,7 +327,7 @@ static int lua_mg_bind(lua_State *L)
 
 	list_add(&bind->node, &ctx->bind_ctx_list);
 
-	if (proto && (!strcmp(proto, "http") || !strcmp(proto, "websocket")))
+	if (proto && (!strcmp(proto, "http"))
 		mg_set_protocol_http_websocket(nc);
 
 	return 0;
@@ -704,8 +707,8 @@ int luaopen_evmongoose(lua_State *L)
 	lua_pushinteger(L, MG_EV_HTTP_REQUEST);
     lua_setfield(L, -2, "MG_EV_HTTP_REQUEST");
 
-	lua_pushinteger(L, MG_EV_WEBSOCKET_HANDSHAKE_DONE);
-    lua_setfield(L, -2, "MG_EV_WEBSOCKET_HANDSHAKE_DONE");
+	lua_pushinteger(L, MG_EV_WEBSOCKET_HANDSHAKE_REQUEST);
+    lua_setfield(L, -2, "MG_EV_WEBSOCKET_HANDSHAKE_REQUEST");
 
 	lua_pushinteger(L, MG_EV_WEBSOCKET_FRAME);
     lua_setfield(L, -2, "MG_EV_WEBSOCKET_FRAME");
