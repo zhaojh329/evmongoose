@@ -327,7 +327,7 @@ static int lua_mg_bind(lua_State *L)
 
 	list_add(&bind->node, &ctx->bind_ctx_list);
 
-	if (proto && (!strcmp(proto, "http"))
+	if (proto && !strcmp(proto, "http"))
 		mg_set_protocol_http_websocket(nc);
 
 	return 0;
