@@ -9882,6 +9882,10 @@ static void mg_mqtt_prepend_header(struct mg_connection *nc, uint8_t cmd,
   } while (len > 0);
 
   mbuf_insert(&nc->send_mbuf, off, buf, vlen - buf);
+
+  /* append by zjh bedin */
+  ev_io_start(nc->mgr->loop, &nc->watcher_w);
+  /* append by zjh end */
 }
 
 void mg_mqtt_publish(struct mg_connection *nc, const char *topic,
