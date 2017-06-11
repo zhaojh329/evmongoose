@@ -1,4 +1,4 @@
-# Evmongoose([中文](https://github.com/zhaojh329/evmongoose/blob/master/README_ZH.md)([github](https://github.com/zhaojh329/xterminal)))
+# Evmongoose([中文](https://github.com/zhaojh329/evmongoose/blob/master/README_ZH.md))([github](https://github.com/zhaojh329/xterminal))
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
 
