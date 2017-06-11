@@ -1,4 +1,4 @@
-# Evmongoose([github](https://github.com/zhaojh329/xterminal)
+# Evmongoose([github](https://github.com/zhaojh329/xterminal))
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
 
