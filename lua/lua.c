@@ -199,6 +199,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	switch (ev) {
 	case MG_EV_CLOSE:
 	case MG_EV_WEBSOCKET_HANDSHAKE_DONE:
+	case MG_EV_MQTT_PINGRESP:
 		lua_call(L, 3, 1);
 		break;
 	
@@ -748,6 +749,9 @@ int luaopen_evmongoose(lua_State *L)
 
 	lua_pushinteger(L, MG_EV_MQTT_PUBLISH);
     lua_setfield(L, -2, "MG_EV_MQTT_PUBLISH");
+
+	lua_pushinteger(L, MG_EV_MQTT_PINGRESP);
+	lua_setfield(L, -2, "MG_EV_MQTT_PINGRESP");
 
 	lua_pushinteger(L, MG_EV_MQTT_CONNACK_ACCEPTED);
     lua_setfield(L, -2, "MG_EV_MQTT_CONNACK_ACCEPTED");

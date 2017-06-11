@@ -37,6 +37,8 @@ local function ev_handle(nc, event, msg)
 	elseif event == evmg.MG_EV_MQTT_PUBLISH then
 		print(msg.topic, msg.payload)
 		mgr:mqtt_publish(nc, "test", "12345678")
+	elseif event == evmg.MG_EV_MQTT_PINGRESP then
+		print("Recv PingResp:", nc)
 	end
 end
 
