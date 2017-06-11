@@ -67,11 +67,18 @@ static void signal_cb(struct ev_loop *loop, ev_signal *w, int revents)
 	ev_break(loop, EVBREAK_ALL);
 }
 
+static void mqtt_ping_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	mg_mqtt_ping((struct mg_connection *)w->data);
+}
+
 int main(int argc, char *argv[])
 {
 	struct ev_loop *loop = EV_DEFAULT;
 	ev_signal sig_watcher;
+	ev_timer ping_timer;
 	struct mg_mgr mgr;
+	struct mg_connection *nc;
 	int i;
 
 	ev_signal_init(&sig_watcher, signal_cb, SIGINT);
@@ -91,12 +98,19 @@ int main(int argc, char *argv[])
 			s_password = argv[++i];
 	}
 
-	if (mg_connect(&mgr, s_address, ev_handler) == NULL) {
+	nc = mg_connect(&mgr, s_address, ev_handler);
+	if (!nc) {
 		fprintf(stderr, "mg_connect(%s) failed\n", s_address);
+		goto err;
 	}
 
+	ev_timer_init(&ping_timer, mqtt_ping_cb, 10, 10);
+	ping_timer.data = nc;
+	ev_timer_start(loop, &ping_timer);
+	
 	ev_run(loop, 0);
 
+err:
 	printf("exit...\n");
 	
 	mg_mgr_free(&mgr);
