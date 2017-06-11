@@ -141,7 +141,10 @@ static void ev_http_request(struct mg_context *ctx, struct mg_connection *nc, vo
 	
 	lua_pushlstring(L, hm->query_string.p, hm->query_string.len);
 	lua_setfield(L, -2, "query_string");
-
+	
+	lua_pushinteger(L, (long)hm);
+	lua_setfield(L, -2, "hm");
+	
 	lua_newtable(L);
 
 	for (i = 0; hm->header_names[i].len > 0; i++) {
@@ -577,6 +580,22 @@ static int lua_mg_http_send_redirect(lua_State *L)
 	return 0;
 }
 
+static int lua_mg_get_http_var(lua_State *L)
+{
+	struct http_message *hm = (struct http_message *)luaL_checkinteger(L, 2);
+	const char *name = luaL_checkstring(L, 3);
+	char value[32] = "";
+	
+	if (mg_get_http_var(&hm->query_string, name, value, sizeof(value)) > 0)
+		lua_pushstring(L, value);
+	else if (mg_get_http_var(&hm->body, name, value, sizeof(value)) > 0)
+		lua_pushstring(L, value);
+	else
+		lua_pushnil(L);
+	
+	return 1;
+}
+
 static int lua_mg_print(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
@@ -690,6 +709,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"print_http_chunk", lua_mg_print_http_chunk},
 	{"connect", lua_mg_connect},
 	{"connect_http", lua_mg_connect_http},
+	{"get_http_var", lua_mg_get_http_var},
 	{"resolve_async", lua_mg_resolve_async},
 	{"set_protocol_mqtt", lua_mg_set_protocol_mqtt},
 	{"send_mqtt_handshake_opt", lua_mg_send_mqtt_handshake_opt},	
