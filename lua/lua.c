@@ -543,6 +543,13 @@ static int lua_mg_mqtt_publish(lua_State *L)
 	return 0;
 }
 
+static int lua_mg_mqtt_ping(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	mg_mqtt_ping(nc);
+	return 0;
+}
+
 static int lua_mg_send_head(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
@@ -687,6 +694,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"send_mqtt_handshake_opt", lua_mg_send_mqtt_handshake_opt},	
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
 	{"mqtt_publish", lua_mg_mqtt_publish},
+	{"mqtt_ping", lua_mg_mqtt_ping},
 	{"send_websocket_frame", lua_mg_send_websocket_frame},
 	{"send", lua_mg_send},
 	{NULL, NULL}

@@ -26,6 +26,11 @@ local function ev_handle(nc, event, msg)
 		local msg_id = 12
 
 		mgr:mqtt_subscribe(nc, topic, msg_id);
+
+		ev.Timer.new(function(loop, timer, revents)
+			mgr:mqtt_ping(nc)
+		end, 10, 10):start(loop)
+		
 	elseif event == evmg.MG_EV_MQTT_SUBACK then
 		print("suback, msgid = ", msg.message_id)
 		
