@@ -1,6 +1,8 @@
-# Evmongoose([中文](https://github.com/zhaojh329/evmongoose/blob/master/README_ZH.md))
+# Evmongoose([中文](https://github.com/zhaojh329/evmongoose/blob/master/README_ZH.md)([github](https://github.com/zhaojh329/xterminal))
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
+
+![](https://github.com/zhaojh329/evmongoose/blob/master/log.png)
 
 Evmongoose is an asynchronous, event(libev) based multi-protocol embedded networking library 
 with functions including TCP, HTTP, WebSocket, MQTT and much more. It is based on [mongoose](https://github.com/cesanta/mongoose)
