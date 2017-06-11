@@ -61,12 +61,6 @@ local function ev_handle(nc, event, msg)
 			return true
 		end
 
-		if msg.uri == "/logout" then
-			local s = find_session(sid)
-			mgr:http_send_redirect(nc, 302, "/", "Set-Cookie: mgs=");
-			return true
-		end
-
 		local cookie = msg.headers["Cookie"] or ""
 		local sid = cookie:match("mgs=(%w+)")
 
