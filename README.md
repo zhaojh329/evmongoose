@@ -22,6 +22,7 @@ could not add my own objects. For example, I want to monitor a signal or a file 
 	- plain TCP, plain UDP, SSL/TLS (over TCP, one-way or two-way)
 	- Alternative openssl and mbedtls
 	- HTTP client, HTTP server
+	- HTTP File Upload
 	- Proxy
 	- WebSocket client, WebSocket server
 	- MQTT client, MQTT broker
