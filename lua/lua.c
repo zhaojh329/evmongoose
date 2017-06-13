@@ -339,11 +339,14 @@ static int lua_mg_bind(lua_State *L)
 	bind->fufn = -1;
 	
 	if (lua_istable(L, 4)) {
+		lua_getfield(L, 4, "proto");
+		proto = lua_tostring(L, -1);
+	
 		lua_getfield(L, 4, "document_root");
 		bind->http_opts.document_root = lua_tostring(L, -1);
 
-		lua_getfield(L, 4, "proto");
-		proto = lua_tostring(L, -1);
+		lua_getfield(L, 4, "url_rewrites");
+		bind->http_opts.url_rewrites = lua_tostring(L, -1);
 		
 #if MG_ENABLE_SSL	
 		lua_getfield(L, 4, "ssl_cert");
