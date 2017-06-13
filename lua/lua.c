@@ -335,7 +335,9 @@ static int lua_mg_bind(lua_State *L)
 	if (proto && !strcmp(proto, "http"))
 		mg_set_protocol_http_websocket(nc);
 
-	return 0;
+	lua_pushinteger(L, (long)nc);
+
+	return 1;
 }
 
 static int lua_mg_connect(lua_State *L)
@@ -376,10 +378,12 @@ static int lua_mg_connect(lua_State *L)
 	nc = mg_connect_opt(&ctx->mgr, address, ev_handler, opts);
 	if (!nc) {
 		luaL_error(L, "%s", err);
-		return 1;
+		return 0;
 	}
 
-	return 0;
+	lua_pushinteger(L, (long)nc);
+	
+	return 1;
 }
 
 static int lua_mg_connect_http(lua_State *L)
@@ -427,10 +431,12 @@ static int lua_mg_connect_http(lua_State *L)
 	nc = mg_connect_http_opt(&ctx->mgr, ev_handler, opts, url, extra_headers, post_data);
 	if (!nc) {
 		luaL_error(L, "%s", err);
-		return 1;
+		return 0;
 	}
 
-	return 0;
+	lua_pushinteger(L, (long)nc);
+
+	return 1;
 }
 
 static void dns_resolve_cb(struct mg_dns_message *msg, void *data, enum mg_resolve_err e)
