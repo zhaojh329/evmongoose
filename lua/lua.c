@@ -662,6 +662,18 @@ static int lua_set_fu_fname_fn(lua_State *L)
 	return 0;
 }
 
+static int lua_mg_http_reverse_proxy(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct http_message *hm = (struct http_message *)luaL_checkinteger(L, 3);
+	const char *mount = luaL_checkstring(L, 4);
+	const char *upstream = luaL_checkstring(L, 5);
+
+	mg_http_reverse_proxy(nc, hm, mg_mk_str(mount), mg_mk_str(upstream));
+	
+	return 0;
+}
+
 static int lua_mg_print(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
@@ -777,6 +789,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"connect_http", lua_mg_connect_http},
 	{"get_http_var", lua_mg_get_http_var},
 	{"set_fu_fname_fn", lua_set_fu_fname_fn},
+	{"http_reverse_proxy", lua_mg_http_reverse_proxy},
 	{"resolve_async", lua_mg_resolve_async},
 	{"set_protocol_mqtt", lua_mg_set_protocol_mqtt},
 	{"send_mqtt_handshake_opt", lua_mg_send_mqtt_handshake_opt},	
