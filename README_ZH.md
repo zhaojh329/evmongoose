@@ -21,7 +21,7 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
 	- SSL库可选择OpenSSL或者mbedtls，对于存储苛刻的系统可选择mbedtls
 	- HTTP客户端，HTTP服务器
 	- HTTP文件上传
-	- 代理
+	- HTTP代理
 	- WebSocket客户端，WebSocket服务器
 	- MQTT客户端，MQTT代理
 	- CoAP客户端，CoAP服务器
