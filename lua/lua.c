@@ -882,6 +882,9 @@ int luaopen_evmongoose(lua_State *L)
 	
 	lua_pushinteger(L, WEBSOCKET_OP_BINARY);
     lua_setfield(L, -2, "WEBSOCKET_OP_BINARY");
+
+	lua_pushinteger(L, WEBSOCKET_OP_CLOSE);
+    lua_setfield(L, -2, "WEBSOCKET_OP_CLOSE");
 	
     return 1;
 }
