@@ -20,7 +20,7 @@ local function ev_handle(nc, event, msg)
 
 	elseif event == evmg.MG_EV_WEBSOCKET_FRAME then
 		print(msg.data)
-		mgr:send_websocket_frame(nc, "I is evmg")
+		mgr:send_websocket_frame(nc, "I is evmg", evmg.WEBSOCKET_OP_TEXT)
 	end
 end
 
