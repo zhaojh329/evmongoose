@@ -176,13 +176,20 @@ static void ev_websocket_frame(struct mg_context *ctx, struct mg_connection *nc,
 	lua_pushlstring(L, (const char *)wm->data, wm->size);
 	lua_setfield(L, -2, "data");
 
-	if (wm->flags & WEBSOCKET_OP_TEXT) {
-		lua_pushinteger(L, WEBSOCKET_OP_TEXT);
-		lua_setfield(L, -2, "op");
-	} else if (wm->flags & WEBSOCKET_OP_BINARY) {
+	if (wm->flags & WEBSOCKET_OP_CONTINUE)
+		lua_pushinteger(L, WEBSOCKET_OP_CONTINUE);
+	else if (wm->flags & WEBSOCKET_OP_BINARY)
 		lua_pushinteger(L, WEBSOCKET_OP_BINARY);
-		lua_setfield(L, -2, "op");
-	}
+	else if (wm->flags & WEBSOCKET_OP_CLOSE)
+		lua_pushinteger(L, WEBSOCKET_OP_CLOSE);
+	else if (wm->flags & WEBSOCKET_OP_PING)
+		lua_pushinteger(L, WEBSOCKET_OP_PING);
+	else if (wm->flags & WEBSOCKET_OP_PONG)
+		lua_pushinteger(L, WEBSOCKET_OP_PONG);
+	else
+		lua_pushstring(L, "unknown");
+		
+	lua_setfield(L, -2, "op");
 
 	lua_call(L, 3, 1);
 }
