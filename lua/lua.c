@@ -145,6 +145,9 @@ static void ev_http_request(struct mg_context *ctx, struct mg_connection *nc, vo
 	
 	lua_pushinteger(L, (long)hm);
 	lua_setfield(L, -2, "hm");
+
+	lua_pushstring(L, inet_ntoa(nc->sa.sin.sin_addr));
+	lua_setfield(L, -2, "remote_addr");
 	
 	lua_newtable(L);
 
