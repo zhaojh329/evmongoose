@@ -540,14 +540,14 @@ static int lua_mg_resolve_async(lua_State *L)
 
 static int lua_mg_set_protocol_mqtt(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	mg_set_protocol_mqtt(nc);
 	return 0;
 }
 
 static int lua_mg_send_mqtt_handshake_opt(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	struct mg_send_mqtt_handshake_opts opts;
 	char client_id[128] = "";
 	
@@ -574,7 +574,7 @@ static int lua_mg_send_mqtt_handshake_opt(lua_State *L)
 
 static int lua_mg_mqtt_subscribe(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	const char *topic = luaL_checkstring(L, 3);
 	int msg_id = lua_tointeger(L, 4);
 	struct mg_mqtt_topic_expression topic_expr = {NULL, 0};
@@ -585,7 +585,7 @@ static int lua_mg_mqtt_subscribe(lua_State *L)
 }
 static int lua_mg_mqtt_publish(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	const char *topic = luaL_checkstring(L, 3);
 	size_t len = 0;
 	const char *payload = luaL_checklstring(L, 4, &len);
@@ -598,14 +598,14 @@ static int lua_mg_mqtt_publish(lua_State *L)
 
 static int lua_mg_mqtt_ping(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	mg_mqtt_ping(nc);
 	return 0;
 }
 
 static int lua_mg_send_head(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	int status_code = luaL_checkint(L, 3);
 	int64_t content_length = luaL_checkint(L, 4);
 	const char *extra_headers = lua_tostring(L, 5);
@@ -616,7 +616,7 @@ static int lua_mg_send_head(lua_State *L)
 
 static int lua_mg_http_send_redirect(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	int status_code = luaL_checkint(L, 3);
 	const char *location = luaL_checkstring(L, 4);
 	const char *extra_headers = lua_tostring(L, 5);
@@ -631,7 +631,7 @@ static int lua_mg_http_send_redirect(lua_State *L)
 
 static int lua_mg_get_http_var(lua_State *L)
 {
-	struct http_message *hm = (struct http_message *)luaL_checkinteger(L, 2);
+	struct http_message *hm = (struct http_message *)(long)luaL_checkinteger(L, 2);
 	const char *name = luaL_checkstring(L, 3);
 	char value[32] = "";
 	
@@ -648,7 +648,7 @@ static int lua_mg_get_http_var(lua_State *L)
 static int lua_set_fu_fname_fn(lua_State *L)
 {
 	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc);
 
 	if (!bind) {
@@ -664,8 +664,8 @@ static int lua_set_fu_fname_fn(lua_State *L)
 
 static int lua_mg_http_reverse_proxy(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
-	struct http_message *hm = (struct http_message *)luaL_checkinteger(L, 3);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
+	struct http_message *hm = (struct http_message *)(long)luaL_checkinteger(L, 3);
 	const char *mount = luaL_checkstring(L, 4);
 	const char *upstream = luaL_checkstring(L, 5);
 
@@ -676,7 +676,7 @@ static int lua_mg_http_reverse_proxy(lua_State *L)
 
 static int lua_mg_print(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	size_t len = 0;
 	const char *buf = luaL_checklstring(L, 3, &len);
 	
@@ -686,7 +686,7 @@ static int lua_mg_print(lua_State *L)
 
 static int lua_mg_print_http_chunk(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	size_t len = 0;
 	const char *buf = luaL_checklstring(L, 3, &len);
 	
@@ -696,10 +696,13 @@ static int lua_mg_print_http_chunk(lua_State *L)
 
 static int lua_mg_send_websocket_frame(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	size_t len = 0;
 	const char *buf = luaL_checklstring(L, 3, &len);
-	int op = luaL_checkinteger(L, 4);
+	int op = lua_tointeger(L, 4);
+
+	if (!op)
+		op = WEBSOCKET_OP_TEXT;
 	
 	mg_send_websocket_frame(nc, op, buf, len);
 	return 0;
@@ -707,7 +710,7 @@ static int lua_mg_send_websocket_frame(lua_State *L)
 
 static int lua_mg_send(lua_State *L)
 {
-	struct mg_connection *nc = (struct mg_connection *)luaL_checkinteger(L, 2);
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	size_t len = 0;
 	const char *buf = luaL_checklstring(L, 3, &len);
 
@@ -874,23 +877,11 @@ int luaopen_evmongoose(lua_State *L)
 	lua_pushinteger(L, MG_EV_RECV);
     lua_setfield(L, -2, "MG_EV_RECV");
 
-	lua_pushinteger(L, WEBSOCKET_OP_CONTINUE);
-	lua_setfield(L, -2, "WEBSOCKET_OP_CONTINUE");
-
 	lua_pushinteger(L, WEBSOCKET_OP_TEXT);
     lua_setfield(L, -2, "WEBSOCKET_OP_TEXT");
 	
 	lua_pushinteger(L, WEBSOCKET_OP_BINARY);
     lua_setfield(L, -2, "WEBSOCKET_OP_BINARY");
-
-	lua_pushinteger(L, WEBSOCKET_OP_CLOSE);
-    lua_setfield(L, -2, "WEBSOCKET_OP_CLOSE");
-
-	lua_pushinteger(L, WEBSOCKET_OP_PING);
-    lua_setfield(L, -2, "WEBSOCKET_OP_PING");
-
-	lua_pushinteger(L, WEBSOCKET_OP_PONG);
-    lua_setfield(L, -2, "WEBSOCKET_OP_PONG");
 	
     return 1;
 }
