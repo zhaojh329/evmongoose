@@ -591,6 +591,19 @@ static int lua_mg_mqtt_subscribe(lua_State *L)
 	mg_mqtt_subscribe(nc, &topic_expr, 1, msg_id);
 	return 0;
 }
+
+static int lua_mg_mqtt_unsubscribe(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
+	const char *topic = luaL_checkstring(L, 3);
+	int msg_id = lua_tointeger(L, 4);
+	struct mg_mqtt_topic_expression topic_expr = {NULL, 0};
+	
+	topic_expr.topic = topic;
+	mg_mqtt_unsubscribe(nc, &topic_expr, 1, msg_id);
+	return 0;
+}
+
 static int lua_mg_mqtt_publish(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
@@ -799,6 +812,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"set_protocol_mqtt", lua_mg_set_protocol_mqtt},
 	{"send_mqtt_handshake_opt", lua_mg_send_mqtt_handshake_opt},	
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
+	{"mqtt_unsubscribe", lua_mg_mqtt_unsubscribe},
 	{"mqtt_publish", lua_mg_mqtt_publish},
 	{"mqtt_ping", lua_mg_mqtt_ping},
 	{"send_websocket_frame", lua_mg_send_websocket_frame},
