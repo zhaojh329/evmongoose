@@ -599,8 +599,7 @@ static int lua_mg_mqtt_unsubscribe(lua_State *L)
 	int msg_id = lua_tointeger(L, 4);
 	struct mg_mqtt_topic_expression topic_expr = {NULL, 0};
 	
-	topic_expr.topic = topic;
-	mg_mqtt_unsubscribe(nc, &topic_expr, 1, msg_id);
+	mg_mqtt_unsubscribe(nc, (char **)&topic, 1, msg_id);
 	return 0;
 }
 
