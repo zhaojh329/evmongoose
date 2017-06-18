@@ -565,6 +565,14 @@ static int lua_mg_send_mqtt_handshake_opt(lua_State *L)
 		lua_getfield(L, 3, "client_id");
 		if (lua_tostring(L, -1))
 			strncpy(client_id, lua_tostring(L, -1), sizeof(client_id));
+
+		lua_getfield(L, 3, "clean_session");
+		if (lua_toboolean(L, -1))
+			opts.flags |= MG_MQTT_CLEAN_SESSION;
+
+		lua_getfield(L, 3, "will_retain");
+		if (lua_toboolean(L, -1))
+			opts.flags |= MG_MQTT_WILL_RETAIN;
 	}
 
 	mg_set_protocol_mqtt(nc);

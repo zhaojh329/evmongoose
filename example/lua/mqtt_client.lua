@@ -12,7 +12,9 @@ local function ev_handle(nc, event, msg)
 		local opt = {
 			user_name = "xxx",
 			password = "xxxx",
-			client_id = "test123"
+			client_id = "test123",
+			clean_session = true,
+			will_retain = false	--Default is false
 		}
 		mgr:set_protocol_mqtt(nc)
 		mgr:send_mqtt_handshake_opt(nc, opt)
