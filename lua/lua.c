@@ -817,7 +817,12 @@ static const luaL_Reg mongoose_meta[] = {
 	{"send", lua_mg_send},
 	{NULL, NULL}
 };
-	
+
+#define EVMG_LUA_ADD_VARIABLE(v)	{ \
+		lua_pushinteger(L, v); \
+		lua_setfield(L, -2, #v); \
+	}
+
 int luaopen_evmongoose(lua_State *L) 
 {
 	/* metatable.__index = metatable */
@@ -834,83 +839,37 @@ int luaopen_evmongoose(lua_State *L)
 	lua_pushcfunction(L, lua_forkpty);
     lua_setfield(L, -2, "forkpty");
 
-	lua_pushinteger(L, MG_EV_HTTP_REQUEST);
-    lua_setfield(L, -2, "MG_EV_HTTP_REQUEST");
-
-	lua_pushinteger(L, MG_EV_WEBSOCKET_HANDSHAKE_REQUEST);
-    lua_setfield(L, -2, "MG_EV_WEBSOCKET_HANDSHAKE_REQUEST");
-
-	lua_pushinteger(L, MG_EV_WEBSOCKET_HANDSHAKE_DONE);
-    lua_setfield(L, -2, "MG_EV_WEBSOCKET_HANDSHAKE_DONE");
-
-	lua_pushinteger(L, MG_EV_WEBSOCKET_FRAME);
-    lua_setfield(L, -2, "MG_EV_WEBSOCKET_FRAME");
-
-	lua_pushinteger(L, MG_EV_CONNECT);
-    lua_setfield(L, -2, "MG_EV_CONNECT");
-
-	lua_pushinteger(L, MG_EV_HTTP_REPLY);
-	lua_setfield(L, -2, "MG_EV_HTTP_REPLY");
-
-	lua_pushinteger(L, MG_EV_HTTP_MULTIPART_REQUEST_END);
-	lua_setfield(L, -2, "MG_EV_HTTP_MULTIPART_REQUEST_END");
-
-	lua_pushinteger(L, MG_EV_CLOSE);
-    lua_setfield(L, -2, "MG_EV_CLOSE");
-
-	lua_pushinteger(L, MG_EV_MQTT_CONNACK);
-    lua_setfield(L, -2, "MG_EV_MQTT_CONNACK");
-
-	lua_pushinteger(L, MG_EV_MQTT_SUBACK);
-    lua_setfield(L, -2, "MG_EV_MQTT_SUBACK");
-
-	lua_pushinteger(L, MG_EV_MQTT_PUBACK);
-    lua_setfield(L, -2, "MG_EV_MQTT_PUBACK");
-
-	lua_pushinteger(L, MG_EV_MQTT_PUBLISH);
-    lua_setfield(L, -2, "MG_EV_MQTT_PUBLISH");
-
-	lua_pushinteger(L, MG_EV_MQTT_PINGRESP);
-	lua_setfield(L, -2, "MG_EV_MQTT_PINGRESP");
-
-	lua_pushinteger(L, MG_EV_MQTT_CONNACK_ACCEPTED);
-    lua_setfield(L, -2, "MG_EV_MQTT_CONNACK_ACCEPTED");
-
-	lua_pushinteger(L, MG_EV_MQTT_CONNACK_UNACCEPTABLE_VERSION);
-    lua_setfield(L, -2, "MG_EV_MQTT_CONNACK_UNACCEPTABLE_VERSION");
-
-	lua_pushinteger(L, MG_EV_MQTT_CONNACK_IDENTIFIER_REJECTED);
-    lua_setfield(L, -2, "MG_EV_MQTT_CONNACK_IDENTIFIER_REJECTED");
-
-	lua_pushinteger(L, MG_EV_MQTT_CONNACK_SERVER_UNAVAILABLE);
-    lua_setfield(L, -2, "MG_EV_MQTT_CONNACK_SERVER_UNAVAILABLE");
-
-	lua_pushinteger(L, MG_EV_MQTT_CONNACK_BAD_AUTH);
-    lua_setfield(L, -2, "MG_EV_MQTT_CONNACK_BAD_AUTH");
-
-	lua_pushinteger(L, MG_EV_MQTT_CONNACK_NOT_AUTHORIZED);
-    lua_setfield(L, -2, "MG_EV_MQTT_CONNACK_NOT_AUTHORIZED");
+	EVMG_LUA_ADD_VARIABLE(MG_EV_CONNECT);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_CLOSE);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_RECV);
 	
-	lua_pushinteger(L, MG_EV_RECV);
-    lua_setfield(L, -2, "MG_EV_RECV");
-
-	lua_pushinteger(L, WEBSOCKET_OP_CONTINUE);
-	lua_setfield(L, -2, "WEBSOCKET_OP_CONTINUE");
-
-	lua_pushinteger(L, WEBSOCKET_OP_TEXT);
-    lua_setfield(L, -2, "WEBSOCKET_OP_TEXT");
+	EVMG_LUA_ADD_VARIABLE(MG_EV_HTTP_REQUEST);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_HTTP_REPLY);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_HTTP_MULTIPART_REQUEST_END);
 	
-	lua_pushinteger(L, WEBSOCKET_OP_BINARY);
-    lua_setfield(L, -2, "WEBSOCKET_OP_BINARY");
-
-	lua_pushinteger(L, WEBSOCKET_OP_CLOSE);
-    lua_setfield(L, -2, "WEBSOCKET_OP_CLOSE");
-
-	lua_pushinteger(L, WEBSOCKET_OP_PING);
-    lua_setfield(L, -2, "WEBSOCKET_OP_PING");
-
-	lua_pushinteger(L, WEBSOCKET_OP_PONG);
-    lua_setfield(L, -2, "WEBSOCKET_OP_PONG");
+	EVMG_LUA_ADD_VARIABLE(MG_EV_WEBSOCKET_HANDSHAKE_REQUEST);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_WEBSOCKET_HANDSHAKE_DONE);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_WEBSOCKET_FRAME);
+	
+	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_CONTINUE);
+	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_TEXT);
+	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_BINARY);
+	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_CLOSE);
+	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_PING);
+	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_PONG);
+	
+	
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_SUBACK);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_PUBACK);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_PUBLISH);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_PINGRESP);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_ACCEPTED);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_UNACCEPTABLE_VERSION);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_IDENTIFIER_REJECTED);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_SERVER_UNAVAILABLE);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_BAD_AUTH);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_NOT_AUTHORIZED);
 	
     return 1;
 }
