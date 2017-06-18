@@ -175,9 +175,11 @@ static void ev_websocket_frame(struct mg_context *ctx, struct mg_connection *nc,
 
 	lua_pushlstring(L, (const char *)wm->data, wm->size);
 	lua_setfield(L, -2, "data");
-
+	
 	if (wm->flags & WEBSOCKET_OP_CONTINUE)
 		lua_pushinteger(L, WEBSOCKET_OP_CONTINUE);
+	else if (wm->flags & WEBSOCKET_OP_TEXT)
+		lua_pushinteger(L, WEBSOCKET_OP_TEXT);
 	else if (wm->flags & WEBSOCKET_OP_BINARY)
 		lua_pushinteger(L, WEBSOCKET_OP_BINARY);
 	else if (wm->flags & WEBSOCKET_OP_CLOSE)
