@@ -699,10 +699,7 @@ static int lua_mg_send_websocket_frame(lua_State *L)
 	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	size_t len = 0;
 	const char *buf = luaL_checklstring(L, 3, &len);
-	int op = lua_tointeger(L, 4);
-
-	if (!op)
-		op = WEBSOCKET_OP_TEXT;
+	int op = luaL_checkinteger(L, 4);
 	
 	mg_send_websocket_frame(nc, op, buf, len);
 	return 0;
@@ -877,11 +874,23 @@ int luaopen_evmongoose(lua_State *L)
 	lua_pushinteger(L, MG_EV_RECV);
     lua_setfield(L, -2, "MG_EV_RECV");
 
+	lua_pushinteger(L, WEBSOCKET_OP_CONTINUE);
+	lua_setfield(L, -2, "WEBSOCKET_OP_CONTINUE");
+
 	lua_pushinteger(L, WEBSOCKET_OP_TEXT);
     lua_setfield(L, -2, "WEBSOCKET_OP_TEXT");
 	
 	lua_pushinteger(L, WEBSOCKET_OP_BINARY);
     lua_setfield(L, -2, "WEBSOCKET_OP_BINARY");
+
+	lua_pushinteger(L, WEBSOCKET_OP_CLOSE);
+    lua_setfield(L, -2, "WEBSOCKET_OP_CLOSE");
+
+	lua_pushinteger(L, WEBSOCKET_OP_PING);
+    lua_setfield(L, -2, "WEBSOCKET_OP_PING");
+
+	lua_pushinteger(L, WEBSOCKET_OP_PONG);
+    lua_setfield(L, -2, "WEBSOCKET_OP_PONG");
 	
     return 1;
 }
