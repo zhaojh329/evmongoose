@@ -19,10 +19,9 @@ local function ev_handle(nc, event, msg)
 		mgr:set_protocol_mqtt(nc)
 		mgr:send_mqtt_handshake_opt(nc, opt)
 	elseif event == evmg.MG_EV_MQTT_CONNACK then
-		if msg.connack_ret_code ~= evmg.MG_EV_MQTT_CONNACK_ACCEPTED then
-			print("Got mqtt connection error:", msg.connack_ret_code)
-			return
-		end
+		print("mqtt connection:", msg.code, msg.reason)
+					
+		if msg.code ~= evmg.MG_EV_MQTT_CONNACK_ACCEPTED then return end
 
 		local topic = "evmongoose"
 		local msg_id = 12

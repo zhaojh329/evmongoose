@@ -273,7 +273,34 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	case MG_EV_MQTT_CONNACK: {
 		struct mg_mqtt_message *msg = (struct mg_mqtt_message *)ev_data;
 		lua_pushinteger(L, msg->connack_ret_code);
-		lua_setfield(L, -2, "connack_ret_code");	
+		lua_setfield(L, -2, "code");
+
+		switch (msg->connack_ret_code) {
+		case MG_EV_MQTT_CONNACK_ACCEPTED:
+			lua_pushstring(L, "Connection Accepted");
+			break;
+		case MG_EV_MQTT_CONNACK_UNACCEPTABLE_VERSION:
+			lua_pushstring(L, "Connection Refused: unacceptable protocol version");
+			break;
+		case MG_EV_MQTT_CONNACK_IDENTIFIER_REJECTED:
+			lua_pushstring(L, "Connection Refused: identifier rejected");
+			break;
+		case MG_EV_MQTT_CONNACK_SERVER_UNAVAILABLE:
+			lua_pushstring(L, "Connection Refused: server unavailable");
+			break;
+		case MG_EV_MQTT_CONNACK_BAD_AUTH:
+			lua_pushstring(L, "Connection Refused: bad user name or password");
+			break;
+		case MG_EV_MQTT_CONNACK_NOT_AUTHORIZED:
+			lua_pushstring(L, "Connection Refused: not authorized");
+			break;
+		default:
+			lua_pushstring(L, "Unknown");
+			break;
+		}
+		
+		lua_setfield(L, -2, "reason");
+		
 		lua_call(L, 3, 1);
 		break;
 	}
@@ -876,6 +903,7 @@ int luaopen_evmongoose(lua_State *L)
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_PUBACK);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_PUBLISH);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_PINGRESP);
+	
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_ACCEPTED);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_UNACCEPTABLE_VERSION);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_IDENTIFIER_REJECTED);
