@@ -34,17 +34,17 @@ menu "Configuration"
 	depends on PACKAGE_evmongoose
 
 	choice
-		prompt "SSl"
+		prompt "Selected SSL library"
 		default EVMONGOOSE_SSL_NONE
 		
 		config EVMONGOOSE_SSL_NONE
-			bool "none"
+			bool "No SSL support"
 			
 		config EVMONGOOSE_SSL_OPENSSL
-			bool "openssl"
+			bool "OpenSSL"
 			
 		config EVMONGOOSE_SSL_MBEDTLS
-			bool "mbedtls"
+			bool "mbed TLS"
 		
 	endchoice
 endmenu
