@@ -43,7 +43,7 @@ menu "Configuration"
 		config EVMONGOOSE_SSL_OPENSSL
 			bool "openssl"
 			
-		config MONGOOSE_SSL_MBEDTLS
+		config EVMONGOOSE_SSL_MBEDTLS
 			bool "mbedtls"
 		
 	endchoice
