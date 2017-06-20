@@ -703,6 +703,15 @@ static int lua_mg_get_http_var(lua_State *L)
 	return 1;
 }
 
+static int lua_mg_get_http_body(lua_State *L)
+{
+	struct http_message *hm = (struct http_message *)(long)luaL_checkinteger(L, 2);
+	
+	lua_pushlstring(L, hm->body.p, hm->body.len);
+	
+	return 1;
+}
+
 static int lua_set_fu_fname_fn(lua_State *L)
 {
 	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
@@ -843,6 +852,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"connect", lua_mg_connect},
 	{"connect_http", lua_mg_connect_http},
 	{"get_http_var", lua_mg_get_http_var},
+	{"get_http_body", lua_mg_get_http_body},
 	{"set_fu_fname_fn", lua_set_fu_fname_fn},
 	{"http_reverse_proxy", lua_mg_http_reverse_proxy},
 	{"resolve_async", lua_mg_resolve_async},

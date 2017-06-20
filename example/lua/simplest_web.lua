@@ -23,6 +23,11 @@ local function ev_handle(nc, event, msg)
 	for k, v in pairs(msg.headers) do
 		mgr:print_http_chunk(nc, "<h1>" .. k .. ": " .. v ..  "</h1>")
 	end
+
+	local body = mgr:get_http_body(msg.hm) or ""
+
+	print(body)
+	mgr:print_http_chunk(nc, "<h1>body:" .. body ..  "</h1>")
 	
 	mgr:print_http_chunk(nc, "")
 
