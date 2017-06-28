@@ -54,7 +54,7 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
     cd evmongoose
     mkdir build
     cd build
-    cmake ..
+    cmake ../src
     make && sudo make install
 
 ### 安装evmongoose（禁止HTTPS）
@@ -62,7 +62,7 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
     cd evmongoose
     mkdir build
     cd build
-    cmake .. -DHTTPS_SUPPORT=OFF
+    cmake ../src -DHTTPS_SUPPORT=OFF
     make && sudo make install
 
 ## OpenWRT/LEDE

@@ -56,7 +56,7 @@ could not add my own objects. For example, I want to monitor a signal or a file 
     cd evmongoose
     mkdir build
     cd build
-    cmake ..
+    cmake ../src
     make && sudo make install
 
 ### Install Evmongoose(Disable HTTPS Support)
@@ -64,7 +64,7 @@ could not add my own objects. For example, I want to monitor a signal or a file 
     cd evmongoose
     mkdir build
     cd build
-    cmake .. -DHTTPS_SUPPORT=OFF
+    cmake ../src -DHTTPS_SUPPORT=OFF
     make && sudo make install
 
 ## For OpenWRT/LEDE
