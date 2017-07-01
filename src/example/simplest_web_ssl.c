@@ -1,6 +1,6 @@
 #include <mongoose.h>
 
-static const char *s_http_port = "8443";
+static const char *s_http_port = "9443";
 static const char *s_ssl_cert = "server.pem";
 static const char *s_ssl_key = "server.key";
 static struct mg_serve_http_opts s_http_server_opts;
