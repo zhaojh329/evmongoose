@@ -691,7 +691,7 @@ static int lua_mg_get_http_var(lua_State *L)
 {
 	struct http_message *hm = (struct http_message *)(long)luaL_checkinteger(L, 2);
 	const char *name = luaL_checkstring(L, 3);
-	char value[32] = "";
+	char value[64] = "";
 	
 	if (mg_get_http_var(&hm->query_string, name, value, sizeof(value)) > 0)
 		lua_pushstring(L, value);
