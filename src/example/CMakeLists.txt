@@ -23,3 +23,9 @@ target_link_libraries(mqtt_client evmongoose)
 
 add_executable(websocket_server websocket_server.c)
 target_link_libraries(websocket_server evmongoose)
+
+add_executable(big_upload big_upload.c)
+target_link_libraries(big_upload evmongoose)
+
+add_executable(big_upload2 big_upload2.c)
+target_link_libraries(big_upload2 evmongoose)
