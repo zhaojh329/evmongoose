@@ -16,10 +16,11 @@
 #define UNINITIALIZED_DEFAULT_LOOP (struct ev_loop*)1
 #define MONGOOSE_MT "mongoose"
 
-struct mg_bind_ctx {
+struct lua_mg_connection {
 	struct mg_serve_http_opts http_opts;
 	struct mg_connection *nc;
 	int fufn;
+	int callback;
 	struct list_head node;
 };
 
@@ -32,18 +33,17 @@ struct mg_resolve_async_ctx {
 struct lua_mg_context {
     struct mg_mgr mgr;
     lua_State *L;
-	int callback;
-	struct list_head bind_ctx_list;
 	int initialized;
+	struct list_head lua_mg_con_list;
 };
 
-static struct mg_bind_ctx *find_bind_ctx(struct lua_mg_context *ctx, struct mg_connection *nc)
+static struct lua_mg_connection *find_lua_mg_con(struct lua_mg_context *ctx, struct mg_connection *nc)
 {
-	struct mg_bind_ctx *bind = NULL;
+	struct lua_mg_connection *lcon = NULL;
 	
-	list_for_each_entry(bind, &ctx->bind_ctx_list, node) {
-		if (bind->nc == nc)
-			return bind;
+	list_for_each_entry(lcon, &ctx->lua_mg_con_list, node) {
+		if (lcon->nc == nc)
+			return lcon;
 	}
 	return NULL;
 }
@@ -53,15 +53,14 @@ static int mg_ctx_destroy(lua_State *L)
 	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	
 	if (ctx->initialized) {
-		struct mg_bind_ctx *bind, *tmp;
-	
-		list_for_each_entry_safe(bind, tmp, &ctx->bind_ctx_list, node) {
-			list_del(&bind->node);
-			free(bind);
-		}
-	
-		mg_mgr_free(&ctx->mgr);
+		struct lua_mg_connection *lcon, *tmp;
 
+		list_for_each_entry_safe(lcon, tmp, &ctx->lua_mg_con_list, node) {
+			list_del(&lcon->node);
+			free(lcon);
+		}
+
+		mg_mgr_free(&ctx->mgr);
 		ctx->initialized = 0;
 	}
     return 0;
@@ -74,7 +73,7 @@ static int mg_ctx_init(lua_State *L)
 	ctx->L = L;
 	ctx->initialized = 1;
 
-	INIT_LIST_HEAD(&ctx->bind_ctx_list);
+	INIT_LIST_HEAD(&ctx->lua_mg_con_list);
 		
     mg_mgr_init(&ctx->mgr, NULL);
     luaL_getmetatable(L, MONGOOSE_MT);
@@ -123,10 +122,10 @@ static void ev_http_reply(struct lua_mg_context *ctx, struct mg_connection *nc, 
 	lua_call(L, 3, 1);
 }
 
-static void ev_http_request(struct lua_mg_context *ctx, struct mg_connection *nc, void *ev_data)
+static void ev_http_request(struct lua_mg_context *ctx, struct mg_connection *nc, 
+				struct lua_mg_connection *lcon, void *ev_data)
 {
 	lua_State *L = ctx->L;
-	struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc->listener);
 	struct http_message *hm = (struct http_message *)ev_data;
 	int i;
 	char tmp[128];
@@ -168,7 +167,7 @@ static void ev_http_request(struct lua_mg_context *ctx, struct mg_connection *nc
 		return;
 	
 	if (!lua_toboolean(L, -1))
-		mg_serve_http(nc, hm, bind->http_opts); /* Serve static content */
+		mg_serve_http(nc, hm, lcon->http_opts); /* Serve static content */
 }
 
 static void ev_websocket_frame(struct lua_mg_context *ctx, struct mg_connection *nc, void *ev_data)
@@ -203,11 +202,11 @@ static struct mg_str http_upload_fname(struct mg_connection *nc, struct mg_str f
 {
 	struct mg_mgr *mgr = nc->mgr;
 	struct lua_mg_context *ctx = container_of(mgr, struct lua_mg_context, mgr);
-	struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc->listener);
+	struct lua_mg_connection *lcon = find_lua_mg_con(ctx, nc->listener);
 	lua_State *L = ctx->L;
 	const char *name = NULL;
 
-	lua_rawgeti(L, LUA_REGISTRYINDEX , bind->fufn);
+	lua_rawgeti(L, LUA_REGISTRYINDEX , lcon->fufn);
 
 	lua_pushlstring(L, fname.p, fname.len);
 	
@@ -228,9 +227,13 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
 	struct mg_mgr *mgr = nc->mgr;
 	struct lua_mg_context *ctx = container_of(mgr, struct lua_mg_context, mgr);
+	struct lua_mg_connection *lcon = find_lua_mg_con(ctx, nc->listener ? nc->listener : nc);
 	lua_State *L = ctx->L;
+	
+	if (!lcon)
+		return;
 
-	lua_rawgeti(L, LUA_REGISTRYINDEX , ctx->callback);
+	lua_rawgeti(L, LUA_REGISTRYINDEX , lcon->callback);
 	lua_pushinteger(L, (long)nc);
 
 	lua_pushinteger(L, ev);
@@ -259,7 +262,6 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	
 	case MG_EV_RECV: {		
 		struct mbuf *io = &nc->recv_mbuf;
-
 		lua_pushlstring(L, io->buf, io->len);
 		lua_setfield(L, -2, "data");
 
@@ -326,7 +328,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 
 	case MG_EV_HTTP_REQUEST:
 	case MG_EV_WEBSOCKET_HANDSHAKE_REQUEST:
-		ev_http_request(ctx, nc, ev_data);
+		ev_http_request(ctx, nc, lcon,  ev_data);
 		break;
 
 	case MG_EV_HTTP_REPLY:
@@ -336,8 +338,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	case MG_EV_HTTP_PART_BEGIN:
 	case MG_EV_HTTP_PART_DATA:
 	case MG_EV_HTTP_PART_END: {
-		struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc->listener);
-		if (bind->fufn > 0)
+		if (lcon->fufn > 0)
 			mg_file_upload_handler(nc, ev, ev_data, http_upload_fname);
 		break;
 	}
@@ -349,18 +350,17 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	default:
 		break;
 	}
-	
+
 	lua_settop(L, 0);
 }
 
 static int lua_mg_bind(lua_State *L)
 {
-	int ref;
 	struct mg_connection *nc;
 	struct mg_bind_opts opts;
 	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *address = luaL_checkstring(L, 2);
-	struct mg_bind_ctx *bind = NULL;
+	struct lua_mg_connection *lcon = NULL;
 	const char *proto = NULL;
 	const char *err;
 	
@@ -369,23 +369,23 @@ static int lua_mg_bind(lua_State *L)
 	memset(&opts, 0, sizeof(opts));
 	opts.error_string = &err;
 
-	bind = calloc(1, sizeof(struct mg_bind_ctx));
-	if (!bind) {
+	lcon = calloc(1, sizeof(struct lua_mg_connection));
+	if (!lcon) {
 		luaL_error(L, "%s", strerror(errno));
 		return 0;
 	}
 
-	bind->fufn = -1;
+	lcon->fufn = -1;
 	
 	if (lua_istable(L, 4)) {
 		lua_getfield(L, 4, "proto");
 		proto = lua_tostring(L, -1);
 	
 		lua_getfield(L, 4, "document_root");
-		bind->http_opts.document_root = lua_tostring(L, -1);
+		lcon->http_opts.document_root = lua_tostring(L, -1);
 
 		lua_getfield(L, 4, "url_rewrites");
-		bind->http_opts.url_rewrites = lua_tostring(L, -1);
+		lcon->http_opts.url_rewrites = lua_tostring(L, -1);
 		
 #if MG_ENABLE_SSL	
 		lua_getfield(L, 4, "ssl_cert");
@@ -403,16 +403,15 @@ static int lua_mg_bind(lua_State *L)
 	}
 
 	lua_settop(L, 3);
-	ref = luaL_ref(L, LUA_REGISTRYINDEX);	
-	ctx->callback = ref;
+	lcon->callback = luaL_ref(L, LUA_REGISTRYINDEX);
 	
 	nc = mg_bind_opt(&ctx->mgr, address, ev_handler, opts);
 	if (!nc)
 		luaL_error(L, "%s", err);
 
-	bind->nc = nc;
+	lcon->nc = nc;
 
-	list_add(&bind->node, &ctx->bind_ctx_list);
+	list_add(&lcon->node, &ctx->lua_mg_con_list);
 
 	if (proto && !strcmp(proto, "http"))
 		mg_set_protocol_http_websocket(nc);
@@ -424,11 +423,11 @@ static int lua_mg_bind(lua_State *L)
 
 static int lua_mg_connect(lua_State *L)
 {
-	int ref;
 	struct mg_connection *nc;
 	struct mg_connect_opts opts;
 	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *address = luaL_checkstring(L, 2);
+	struct lua_mg_connection *lcon = NULL;
 	const char *err;
 	
 	luaL_checktype(L, 3, LUA_TFUNCTION);
@@ -436,6 +435,12 @@ static int lua_mg_connect(lua_State *L)
 	memset(&opts, 0, sizeof(opts));
 
 	opts.error_string = &err;
+
+	lcon = calloc(1, sizeof(struct lua_mg_connection));
+	if (!lcon) {
+		luaL_error(L, "%s", strerror(errno));
+		return 0;
+	}
 	
 	if (lua_istable(L, 4)) {
 #if MG_ENABLE_SSL		
@@ -454,8 +459,7 @@ static int lua_mg_connect(lua_State *L)
 	}
 
 	lua_settop(L, 3);
-	ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	ctx->callback = ref;
+	lcon->callback = luaL_ref(L, LUA_REGISTRYINDEX);
 	
 	nc = mg_connect_opt(&ctx->mgr, address, ev_handler, opts);
 	if (!nc) {
@@ -463,6 +467,9 @@ static int lua_mg_connect(lua_State *L)
 		return 0;
 	}
 
+	lcon->nc = nc;	
+	list_add(&lcon->node, &ctx->lua_mg_con_list);
+		
 	lua_pushinteger(L, (long)nc);
 	
 	return 1;
@@ -470,9 +477,9 @@ static int lua_mg_connect(lua_State *L)
 
 static int lua_mg_connect_http(lua_State *L)
 {
-	int ref;
 	struct mg_connection *nc;
 	struct mg_connect_opts opts;
+	struct lua_mg_connection *lcon = NULL;
 	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *url = luaL_checkstring(L, 2);
 	const char *extra_headers = NULL;
@@ -484,6 +491,12 @@ static int lua_mg_connect_http(lua_State *L)
 	memset(&opts, 0, sizeof(opts));
 
 	opts.error_string = &err;
+
+	lcon = calloc(1, sizeof(struct lua_mg_connection));
+	if (!lcon) {
+		luaL_error(L, "%s", strerror(errno));
+		return 0;
+	}
 	
 	if (lua_istable(L, 4)) {
 #if MG_ENABLE_SSL		
@@ -507,8 +520,7 @@ static int lua_mg_connect_http(lua_State *L)
 	}
 
 	lua_settop(L, 3);
-	ref = luaL_ref(L, LUA_REGISTRYINDEX);
-	ctx->callback = ref;
+	lcon->callback = luaL_ref(L, LUA_REGISTRYINDEX);
 
 	nc = mg_connect_http_opt(&ctx->mgr, ev_handler, opts, url, extra_headers, post_data);
 	if (!nc) {
@@ -516,6 +528,9 @@ static int lua_mg_connect_http(lua_State *L)
 		return 0;
 	}
 
+	lcon->nc = nc;
+	list_add(&lcon->node, &ctx->lua_mg_con_list);
+	
 	lua_pushinteger(L, (long)nc);
 
 	return 1;
@@ -716,15 +731,15 @@ static int lua_set_fu_fname_fn(lua_State *L)
 {
 	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
-	struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc);
+	struct lua_mg_connection *lcon = find_lua_mg_con(ctx, nc);
 
-	if (!bind) {
+	if (!lcon) {
 		luaL_error(L, "Invalid nc");
 		return 0;
 	}
 	
 	luaL_checktype(L, 3, LUA_TFUNCTION);
-	bind->fufn = luaL_ref(L, LUA_REGISTRYINDEX);
+	lcon->fufn = luaL_ref(L, LUA_REGISTRYINDEX);
 
 	return 0;
 }
