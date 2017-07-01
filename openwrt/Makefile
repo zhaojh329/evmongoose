@@ -51,6 +51,7 @@ endmenu
 endef
 
 CMAKE_OPTIONS = -DHTTPS_SUPPORT=OFF
+CMAKE_SOURCE_DIR = $(PKG_BUILD_DIR)/src
 
 ifeq ($(CONFIG_EVMONGOOSE_SSL_OPENSSL),y)
   CMAKE_OPTIONS = -DHTTPS_SUPPORT=ON
@@ -63,7 +64,7 @@ endif
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/lib $(1)/usr/include
 	$(CP) $(PKG_BUILD_DIR)/libevmongoose.so $(1)/usr/lib
-	$(CP) $(PKG_BUILD_DIR)/mongoose.h $(1)/usr/include
+	$(CP) $(PKG_BUILD_DIR)/src/mongoose.h $(1)/usr/include
 endef
 
 define Package/evmongoose/install
