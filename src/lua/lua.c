@@ -29,7 +29,7 @@ struct mg_resolve_async_ctx {
 	char domain[128];
 };
 
-struct mg_context {
+struct lua_mg_context {
     struct mg_mgr mgr;
     lua_State *L;
 	int callback;
@@ -37,7 +37,7 @@ struct mg_context {
 	int initialized;
 };
 
-static struct mg_bind_ctx *find_bind_ctx(struct mg_context *ctx, struct mg_connection *nc)
+static struct mg_bind_ctx *find_bind_ctx(struct lua_mg_context *ctx, struct mg_connection *nc)
 {
 	struct mg_bind_ctx *bind = NULL;
 	
@@ -50,7 +50,7 @@ static struct mg_bind_ctx *find_bind_ctx(struct mg_context *ctx, struct mg_conne
 
 static int mg_ctx_destroy(lua_State *L)
 {
-	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
+	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	
 	if (ctx->initialized) {
 		struct mg_bind_ctx *bind, *tmp;
@@ -69,7 +69,7 @@ static int mg_ctx_destroy(lua_State *L)
 
 static int mg_ctx_init(lua_State *L)
 {
-	struct mg_context *ctx = lua_newuserdata(L, sizeof(struct mg_context));
+	struct lua_mg_context *ctx = lua_newuserdata(L, sizeof(struct lua_mg_context));
 	
 	ctx->L = L;
 	ctx->initialized = 1;
@@ -89,7 +89,7 @@ static int mg_ctx_init(lua_State *L)
 	return 1;
 }
 
-static void ev_http_reply(struct mg_context *ctx, struct mg_connection *nc, void *ev_data)
+static void ev_http_reply(struct lua_mg_context *ctx, struct mg_connection *nc, void *ev_data)
 {
 	lua_State *L = ctx->L;
 	struct http_message *rsp = (struct http_message *)ev_data;
@@ -123,7 +123,7 @@ static void ev_http_reply(struct mg_context *ctx, struct mg_connection *nc, void
 	lua_call(L, 3, 1);
 }
 
-static void ev_http_request(struct mg_context *ctx, struct mg_connection *nc, void *ev_data)
+static void ev_http_request(struct lua_mg_context *ctx, struct mg_connection *nc, void *ev_data)
 {
 	lua_State *L = ctx->L;
 	struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc->listener);
@@ -171,7 +171,7 @@ static void ev_http_request(struct mg_context *ctx, struct mg_connection *nc, vo
 		mg_serve_http(nc, hm, bind->http_opts); /* Serve static content */
 }
 
-static void ev_websocket_frame(struct mg_context *ctx, struct mg_connection *nc, void *ev_data)
+static void ev_websocket_frame(struct lua_mg_context *ctx, struct mg_connection *nc, void *ev_data)
 {
 	lua_State *L = ctx->L;
 	struct websocket_message *wm = (struct websocket_message *)ev_data;
@@ -202,7 +202,7 @@ static void ev_websocket_frame(struct mg_context *ctx, struct mg_connection *nc,
 static struct mg_str http_upload_fname(struct mg_connection *nc, struct mg_str fname)
 {
 	struct mg_mgr *mgr = nc->mgr;
-	struct mg_context *ctx = container_of(mgr, struct mg_context, mgr);
+	struct lua_mg_context *ctx = container_of(mgr, struct lua_mg_context, mgr);
 	struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc->listener);
 	lua_State *L = ctx->L;
 	const char *name = NULL;
@@ -227,7 +227,7 @@ static struct mg_str http_upload_fname(struct mg_connection *nc, struct mg_str f
 static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
 	struct mg_mgr *mgr = nc->mgr;
-	struct mg_context *ctx = container_of(mgr, struct mg_context, mgr);
+	struct lua_mg_context *ctx = container_of(mgr, struct lua_mg_context, mgr);
 	lua_State *L = ctx->L;
 
 	lua_rawgeti(L, LUA_REGISTRYINDEX , ctx->callback);
@@ -358,7 +358,7 @@ static int lua_mg_bind(lua_State *L)
 	int ref;
 	struct mg_connection *nc;
 	struct mg_bind_opts opts;
-	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
+	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *address = luaL_checkstring(L, 2);
 	struct mg_bind_ctx *bind = NULL;
 	const char *proto = NULL;
@@ -427,7 +427,7 @@ static int lua_mg_connect(lua_State *L)
 	int ref;
 	struct mg_connection *nc;
 	struct mg_connect_opts opts;
-	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
+	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *address = luaL_checkstring(L, 2);
 	const char *err;
 	
@@ -473,7 +473,7 @@ static int lua_mg_connect_http(lua_State *L)
 	int ref;
 	struct mg_connection *nc;
 	struct mg_connect_opts opts;
-	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
+	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *url = luaL_checkstring(L, 2);
 	const char *extra_headers = NULL;
 	const char *post_data = NULL;
@@ -558,7 +558,7 @@ ret:
 static int lua_mg_resolve_async(lua_State *L)
 {
 	int ref;
-	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
+	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *domain = luaL_checkstring(L, 2);
 	struct mg_resolve_async_ctx *data = NULL;
 	
@@ -714,7 +714,7 @@ static int lua_mg_get_http_body(lua_State *L)
 
 static int lua_set_fu_fname_fn(lua_State *L)
 {
-	struct mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
+	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
 	struct mg_bind_ctx *bind = find_bind_ctx(ctx, nc);
 
