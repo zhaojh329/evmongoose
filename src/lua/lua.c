@@ -797,6 +797,13 @@ static int lua_mg_send(lua_State *L)
 	return 0;
 }
 
+static int lua_set_connection_flags(lua_State *L)
+{
+	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
+	nc->flags |= luaL_checkinteger(L, 3);
+	return 0;
+}
+
 static int lua_forkpty(lua_State *L)
 {
 	pid_t pid;
@@ -879,6 +886,7 @@ static const luaL_Reg mongoose_meta[] = {
 	{"mqtt_ping", lua_mg_mqtt_ping},
 	{"send_websocket_frame", lua_mg_send_websocket_frame},
 	{"send", lua_mg_send},
+	{"set_connection_flags", lua_set_connection_flags},
 	{NULL, NULL}
 };
 
@@ -935,6 +943,9 @@ int luaopen_evmongoose(lua_State *L)
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_SERVER_UNAVAILABLE);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_BAD_AUTH);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK_NOT_AUTHORIZED);
+
+	EVMG_LUA_ADD_VARIABLE(MG_F_SEND_AND_CLOSE);
+	EVMG_LUA_ADD_VARIABLE(MG_F_CLOSE_IMMEDIATELY);
 	
     return 1;
 }

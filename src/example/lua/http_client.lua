@@ -11,6 +11,8 @@ local function ev_handle(nc, event, msg)
 	if event == evmg.MG_EV_CONNECT then
 		print("connect ", msg.connected, msg.err)
 	elseif event == evmg.MG_EV_HTTP_REPLY then
+		mgr:set_connection_flags(nc, evmg.MG_F_CLOSE_IMMEDIATELY)
+		
 		print("resp_code:", msg.resp_code)
 		print("resp_status_msg:", msg.resp_status_msg)
 		for k, v in pairs(msg.headers) do
