@@ -2482,7 +2482,8 @@ void mg_send(struct mg_connection *nc, const void *buf, int len) {
 #endif
 
   /* append by zjh bedin */
-  ev_io_start(nc->mgr->loop, &nc->watcher_w);
+  if (nc->sock != INVALID_SOCKET)
+    ev_io_start(nc->mgr->loop, &nc->watcher_w);
   /* append by zjh end */
 }
 
