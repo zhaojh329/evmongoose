@@ -11,7 +11,6 @@ static int l_openlog(lua_State *L)
 	int option = luaL_checkint(L, 2);
 	int facility = luaL_checkint(L, 3);
 
-	printf("l_openlog(%s, %d, %d)\n", ident, option, facility);
 	openlog(ident, option, facility);
 	return 0;
 }
@@ -19,9 +18,8 @@ static int l_openlog(lua_State *L)
 static int l_syslog(lua_State *L)
 {
 	int priority = luaL_checkint(L, 1);
-	const char *msg = luaL_checkstring(L, 2);	
+	const char *msg = luaL_checkstring(L, 2);
 
-	printf("l_syslog(%d, %s)\n", priority, msg);
 	syslog(priority, "%s", msg);
 	return 0;
 }
