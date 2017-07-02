@@ -1,17 +1,8 @@
+#include <pty.h>
+#include "lua_mongoose.h"
 #include "mongoose.h"
 #include "list.h"
-#include <lauxlib.h>
-#include <lualib.h>
-#include <pty.h>
 
-#ifndef container_of
-#define container_of(ptr, type, member)					\
-	({								\
-		const typeof(((type *) NULL)->member) *__mptr = (ptr);	\
-		(type *) ((char *) __mptr - offsetof(type, member));	\
-	})
-#endif
-	
 #define LOOP_MT    "ev{loop}"
 #define UNINITIALIZED_DEFAULT_LOOP (struct ev_loop*)1
 #define MONGOOSE_MT "mongoose"
@@ -849,7 +840,7 @@ static int lua_forkpty(lua_State *L)
 /*
 ** Adapted from Lua 5.2
 */
-void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup) {
+static void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup) {
   luaL_checkstack(L, nup+1, "too many upvalues");
   for (; l->name != NULL; l++) {  /* fill the table with given functions */
     int i;
@@ -890,11 +881,6 @@ static const luaL_Reg mongoose_meta[] = {
 	{NULL, NULL}
 };
 
-#define EVMG_LUA_ADD_VARIABLE(v)	{ \
-		lua_pushinteger(L, v); \
-		lua_setfield(L, -2, #v); \
-	}
-
 int luaopen_evmongoose(lua_State *L) 
 {
 	/* metatable.__index = metatable */
@@ -910,7 +896,7 @@ int luaopen_evmongoose(lua_State *L)
 
 	lua_pushcfunction(L, lua_forkpty);
     lua_setfield(L, -2, "forkpty");
-
+	
 	EVMG_LUA_ADD_VARIABLE(MG_EV_CONNECT);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_CLOSE);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_RECV);
@@ -946,6 +932,9 @@ int luaopen_evmongoose(lua_State *L)
 
 	EVMG_LUA_ADD_VARIABLE(MG_F_SEND_AND_CLOSE);
 	EVMG_LUA_ADD_VARIABLE(MG_F_CLOSE_IMMEDIATELY);
+
+	luaopen_evmongoose_syslog(L);
+	lua_setfield(L, -2, "syslog");
 	
     return 1;
 }
