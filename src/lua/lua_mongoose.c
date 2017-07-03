@@ -6,6 +6,7 @@
 #define LOOP_MT    "ev{loop}"
 #define UNINITIALIZED_DEFAULT_LOOP (struct ev_loop*)1
 #define MONGOOSE_MT "mongoose"
+#define MONGOOSE_CONN_MT "mongoose.connection"
 
 struct lua_mg_connection {
 	struct mg_serve_http_opts http_opts;
@@ -859,9 +860,9 @@ static const luaL_Reg mongoose_meta[] = {
 	{"destroy", mg_ctx_destroy},
 	{"bind", lua_mg_bind},
 	{"send_head", lua_mg_send_head},
-	{"http_send_redirect", lua_mg_http_send_redirect},
-	{"print", lua_mg_print},
 	{"print_http_chunk", lua_mg_print_http_chunk},
+	{"http_send_redirect", lua_mg_http_send_redirect},
+	{"print", lua_mg_print},	
 	{"connect", lua_mg_connect},
 	{"connect_http", lua_mg_connect_http},
 	{"get_http_var", lua_mg_get_http_var},
