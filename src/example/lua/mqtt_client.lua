@@ -7,6 +7,8 @@ local loop = ev.Loop.new()
 
 local mgr = evmg.init(loop)
 
+local mqtt_ping_timer
+
 local function ev_handle(nc, event, msg)
 	if event == evmg.MG_EV_CONNECT then
 		local opt = {
@@ -19,7 +21,7 @@ local function ev_handle(nc, event, msg)
 		mgr:set_protocol_mqtt(nc)
 		mgr:send_mqtt_handshake_opt(nc, opt)
 	elseif event == evmg.MG_EV_MQTT_CONNACK then
-		print("mqtt connection:", msg.code, msg.reason)
+		print("mqtt connection:", nc, msg.code, msg.reason)
 					
 		if msg.code ~= evmg.MG_EV_MQTT_CONNACK_ACCEPTED then return end
 
@@ -28,9 +30,8 @@ local function ev_handle(nc, event, msg)
 
 		mgr:mqtt_subscribe(nc, topic, msg_id);
 
-		ev.Timer.new(function(loop, timer, revents)
-			mgr:mqtt_ping(nc)
-		end, 10, 10):start(loop)
+		mqtt_ping_timer = ev.Timer.new(function(loop, timer, revents) mgr:mqtt_ping(nc) end, 10, 10)
+		mqtt_ping_timer:start(loop)
 		
 	elseif event == evmg.MG_EV_MQTT_SUBACK then
 		print("suback, msgid = ", msg.message_id)
@@ -40,6 +41,18 @@ local function ev_handle(nc, event, msg)
 		mgr:mqtt_publish(nc, "test", "12345678")
 	elseif event == evmg.MG_EV_MQTT_PINGRESP then
 		print("Recv PingResp:", nc)
+	elseif event == evmg.MG_EV_CLOSE then
+		print("connection close:", nc)
+		
+		if mqtt_ping_timer then
+			mqtt_ping_timer:stop(loop)
+			mqtt_ping_timer = nil
+		end
+		
+		ev.Timer.new(function()
+			print("Try Reconnect...")
+			mgr:connect("localhost:1883", ev_handle)
+		end, 2):start(loop)
 	end
 end
 
