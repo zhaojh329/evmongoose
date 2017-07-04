@@ -60,7 +60,7 @@ static int mg_ctx_destroy(lua_State *L)
 
 static int mg_ctx_init(lua_State *L)
 {
-	struct ev_loop **loop = NULL;
+	struct ev_loop *loop = NULL;
 	struct lua_mg_context *ctx = lua_newuserdata(L, sizeof(struct lua_mg_context));
 	
 	ctx->L = L;
@@ -68,14 +68,16 @@ static int mg_ctx_init(lua_State *L)
 
 	INIT_LIST_HEAD(&ctx->lua_mg_con_list);
 		
-   
     luaL_getmetatable(L, MONGOOSE_MT);
     lua_setmetatable(L, -2);
 
-	if (lua_gettop(L) > 1)
-		loop = luaL_checkudata(L, 1, LOOP_MT);
+	if (lua_gettop(L) > 1) {
+		struct ev_loop **tmp = luaL_checkudata(L, 1, LOOP_MT);
+		if (tmp && *tmp != UNINITIALIZED_DEFAULT_LOOP)
+			loop = *tmp;
+	}
 
-	mg_mgr_init(&ctx->mgr, NULL, *loop);
+	mg_mgr_init(&ctx->mgr, NULL, loop);
 	
 	return 1;
 }
