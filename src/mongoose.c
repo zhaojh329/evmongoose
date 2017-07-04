@@ -10793,11 +10793,13 @@ int mg_resolve_from_hosts_file(const char *name, union socket_address *usa) {
   return -1;
 }
 
+/* append by zjh bedin */
 static void mg_resolve_async_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
 {
 	struct mg_connection *nc = (struct mg_connection *)w->data;
 	mg_call(nc, NULL, MG_EV_POLL, NULL);
 }
+/* append by zjh end */
 
 static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
   time_t now = (time_t) mg_time();
@@ -10818,14 +10820,16 @@ static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
       /* don't depend on timer not being at epoch for sending out first req */
       first = 1;
 
+	   /* append by zjh bedin */
 	  ev_timer_init(&nc->timer, mg_resolve_async_timer_cb, 1, 1);
 	  nc->timer.data = nc;
  	  ev_timer_start(nc->mgr->loop, &nc->timer);
+	  /* append by zjh end */
 	  
     /* fallthrough */
     case MG_EV_POLL:
       if (req->retries > req->max_retries) {
-        req->err = MG_RESOLVE_EXCEEDED_RETRY_COUNT;
+        req->err = MG_RESOLVE_TIMEOUT;	/* Modify by zjh */
         nc->flags |= MG_F_CLOSE_IMMEDIATELY;
         break;
       }
