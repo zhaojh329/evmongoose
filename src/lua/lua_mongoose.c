@@ -921,7 +921,7 @@ int luaopen_evmongoose(lua_State *L)
     lua_setfield(L, -2, "__index");
     luaL_setfuncs(L, mongoose_meta, 0);
 
-    lua_createtable(L, 0, 1);
+    lua_newtable(L);
 	
     lua_pushcfunction(L, mg_ctx_init);
     lua_setfield(L, -2, "init");
