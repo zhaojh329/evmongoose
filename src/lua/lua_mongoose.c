@@ -60,6 +60,7 @@ static int mg_ctx_destroy(lua_State *L)
 
 static int mg_ctx_init(lua_State *L)
 {
+	struct ev_loop **loop = NULL;
 	struct lua_mg_context *ctx = lua_newuserdata(L, sizeof(struct lua_mg_context));
 	
 	ctx->L = L;
@@ -67,15 +68,14 @@ static int mg_ctx_init(lua_State *L)
 
 	INIT_LIST_HEAD(&ctx->lua_mg_con_list);
 		
-    mg_mgr_init(&ctx->mgr, NULL);
+   
     luaL_getmetatable(L, MONGOOSE_MT);
     lua_setmetatable(L, -2);
 
-	if (lua_gettop(L) > 1) {
-		struct ev_loop **loop = luaL_checkudata(L, 1, LOOP_MT);
-		if (loop && *loop != UNINITIALIZED_DEFAULT_LOOP)
-			mg_mgr_set_loop(&ctx->mgr, *loop);
-	}
+	if (lua_gettop(L) > 1)
+		loop = luaL_checkudata(L, 1, LOOP_MT);
+
+	mg_mgr_init(&ctx->mgr, NULL, *loop);
 	
 	return 1;
 }
@@ -537,14 +537,31 @@ static void dns_resolve_cb(struct mg_dns_message *msg, void *data, enum mg_resol
 	struct mg_dns_resource_record *rr = NULL;		
 
 	lua_rawgeti(L, LUA_REGISTRYINDEX , ctx->callback);
-	
+
 	lua_pushstring(L, ctx->domain);
 	
+	if ((!msg) || (e != MG_RESOLVE_OK)) {
+		lua_pushnil(L);
+		
+		switch (e) {
+		case MG_RESOLVE_NO_ANSWERS:
+			lua_pushstring(L, "No answers");
+			break;
+		case MG_RESOLVE_EXCEEDED_RETRY_COUNT:
+			lua_pushstring(L, "Exceeded retry count");
+			break;
+		case MG_RESOLVE_TIMEOUT:
+			lua_pushstring(L, "Timeout");
+			break;
+		default:
+			lua_pushstring(L, "Unknown error");
+			break;
+		}
+		goto ret;
+	}
+
 	lua_newtable(L);
 	
-	if (!msg)
-		goto ret;
-
 	while (1) {
 		rr = mg_dns_next_record(msg, MG_DNS_A_RECORD, rr);
 		if (!rr)
@@ -556,10 +573,11 @@ static void dns_resolve_cb(struct mg_dns_message *msg, void *data, enum mg_resol
 		lua_pushstring(L, inet_ntoa(ina));
 		lua_rawseti(L, -2, i++);
 	}
-	
+
+	lua_pushstring(L, "ok");
 ret:
 	free(ctx);
-	lua_call(L, 2, 0);
+	lua_call(L, 3, 0);
 }
 
 static int lua_mg_resolve_async(lua_State *L)

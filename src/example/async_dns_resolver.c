@@ -5,9 +5,25 @@ static void dns_resolve_cb(struct mg_dns_message *msg, void *data, enum mg_resol
 	struct in_addr ina;
 	struct mg_dns_resource_record *rr = NULL;
 	
-	if (!msg)
+	if (!msg) {
+		printf("resolve failed:");
+		switch (e) {
+		case MG_RESOLVE_NO_ANSWERS:
+			printf(" No answers\n");
+			break;
+		case MG_RESOLVE_EXCEEDED_RETRY_COUNT:
+			printf(" Exceeded retry count\n");
+			break;
+		case MG_RESOLVE_TIMEOUT:
+			printf(" Timeout\n");
+			break;
+		default:
+			printf(" Unknown error\n");
+			break;
+		}
 		return;
-
+	}
+	
 	while (1) {
 		rr = mg_dns_next_record(msg, MG_DNS_A_RECORD, rr);
 		if (!rr)
@@ -38,7 +54,7 @@ int main(int argc, char *argv[])
 	ev_signal_init(&sig_watcher, signal_cb, SIGINT);
 	ev_signal_start(loop, &sig_watcher);
 	
-	mg_mgr_init(&mgr, NULL);
+	mg_mgr_init(&mgr, NULL, loop);
 
 	/* Process command line arguments */
 	if (argc != 2) {

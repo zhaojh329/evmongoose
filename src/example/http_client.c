@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 	ev_signal_init(&sig_watcher, signal_cb, SIGINT);
 	ev_signal_start(loop, &sig_watcher);
 	
-	mg_mgr_init(&mgr, NULL);
+	mg_mgr_init(&mgr, NULL, loop);
 
 	/* Process command line arguments */
 	for (i = 1; i < argc; i++) {

@@ -2112,24 +2112,30 @@ void mg_close_conn(struct mg_connection *conn) {
   mg_destroy_conn(conn, 0 /* destroy_if */);
 }
 
-void mg_mgr_init(struct mg_mgr *m, void *user_data) {
+static void mg_mgr_ev_timeer_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	struct mg_mgr *mgr = (struct mg_mgr *)w->data;
+	struct mg_connection *nc, *tmp;
+	
+	for (nc = mgr->active_connections; nc != NULL; nc = tmp) {
+		tmp = nc->next;
+		mg_if_poll(nc, (time_t) mg_time());
+	}
+}
+
+void mg_mgr_init(struct mg_mgr *m, void *user_data, struct ev_loop *loop) {
   struct mg_mgr_init_opts opts;
   memset(&opts, 0, sizeof(opts));
   mg_mgr_init_opt(m, user_data, opts);
 
   /* append by zjh bedin */
-  m->loop = EV_DEFAULT;
+  m->loop = loop ? loop : EV_DEFAULT;
+
+  ev_timer_init(&m->timer, mg_mgr_ev_timeer_cb, 1, 1);
+  m->timer.data = m;
+  ev_timer_start(loop, &m->timer);
   /* append by zjh end */
 }
-
-/* append by zjh bedin */
-void mg_mgr_set_loop(struct mg_mgr *m, struct ev_loop *loop)
-{
-	if (!loop)
-		return;
-	m->loop = loop;
-}
-/* append by zjh end */
 
 void mg_mgr_init_opt(struct mg_mgr *m, void *user_data,
                      struct mg_mgr_init_opts opts) {

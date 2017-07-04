@@ -31,9 +31,7 @@ int main(int argc, char **argv)
 	ev_signal_init(&sig_watcher, signal_cb, SIGINT);
 	ev_signal_start(loop, &sig_watcher);
 	
-	mg_mgr_init(&mgr, NULL);
-	
-	mg_mgr_set_loop(&mgr, loop);
+	mg_mgr_init(&mgr, NULL, loop);
 
 	if  (!mg_bind(&mgr, server1, ev_handler))
 		printf("Failed to open listener:%s\n", server1);
