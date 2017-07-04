@@ -39,14 +39,8 @@ static const struct luaL_Reg R[] = {
 
 int luaopen_evmongoose_syslog(lua_State *L)
 {
-	const struct luaL_Reg *r = R;
-
 	lua_newtable(L);
-	
-	for (; r->name; r++) {
-		lua_pushcfunction(L, r->func);
-		lua_setfield(L, -2, r->name);
-	}
+	luaL_register(L, NULL, R);
 
 	/* The option argument to openlog() */
 	EVMG_LUA_ADD_VARIABLE(LOG_CONS);
@@ -90,3 +84,4 @@ int luaopen_evmongoose_syslog(lua_State *L)
 	
 	return 1;
 }
+

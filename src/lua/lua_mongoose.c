@@ -868,24 +868,6 @@ static int lua_forkpty(lua_State *L)
 	return 2;
 }
 
-#if LUA_VERSION_NUM==501
-/*
-** Adapted from Lua 5.2
-*/
-static void luaL_setfuncs (lua_State *L, const luaL_Reg *l, int nup) {
-  luaL_checkstack(L, nup+1, "too many upvalues");
-  for (; l->name != NULL; l++) {  /* fill the table with given functions */
-    int i;
-    lua_pushstring(L, l->name);
-    for (i = 0; i < nup; i++)  /* copy upvalues to the top */
-      lua_pushvalue(L, -(nup+1));
-    lua_pushcclosure(L, l->func, nup);  /* closure with those upvalues */
-    lua_settable(L, -(nup + 3));
-  }
-  lua_pop(L, nup);  /* remove upvalues */
-}
-#endif
-
 static const luaL_Reg mongoose_meta[] = {
 	{"__gc", mg_ctx_destroy},
 	{"destroy", mg_ctx_destroy},
@@ -913,22 +895,23 @@ static const luaL_Reg mongoose_meta[] = {
 	{NULL, NULL}
 };
 
+static const luaL_Reg mongoose_fun[] = {
+	{"init", mg_ctx_init},
+	{"forkpty", lua_forkpty},
+	{NULL, NULL}
+};
+
 int luaopen_evmongoose(lua_State *L) 
 {
 	/* metatable.__index = metatable */
     luaL_newmetatable(L, MONGOOSE_MT);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
-    luaL_setfuncs(L, mongoose_meta, 0);
+    luaL_register(L, NULL, mongoose_meta);
 
-    lua_newtable(L);
-	
-    lua_pushcfunction(L, mg_ctx_init);
-    lua_setfield(L, -2, "init");
+	lua_newtable(L);
+	luaL_register(L, NULL, mongoose_fun);
 
-	lua_pushcfunction(L, lua_forkpty);
-    lua_setfield(L, -2, "forkpty");
-	
 	EVMG_LUA_ADD_VARIABLE(MG_EV_CONNECT);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_CLOSE);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_RECV);
@@ -947,7 +930,6 @@ int luaopen_evmongoose(lua_State *L)
 	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_CLOSE);
 	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_PING);
 	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_PONG);
-	
 	
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_CONNACK);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_MQTT_SUBACK);
