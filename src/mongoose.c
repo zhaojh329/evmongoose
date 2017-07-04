@@ -10809,8 +10809,12 @@ static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
 
   if (ev != MG_EV_POLL) DBG(("ev=%d user_data=%p", ev, nc->user_data));
 
-  req = (struct mg_resolve_async_request *) nc->user_data;
+  /* append by zjh bedin */
+  if (ev == MG_EV_CLOSE)
+  	ev_timer_stop(nc->mgr->loop, &nc->timer);
+  /* append by zjh end */
 
+  req = (struct mg_resolve_async_request *) nc->user_data;
   if (req == NULL) {
     return;
   }
@@ -10820,7 +10824,7 @@ static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
       /* don't depend on timer not being at epoch for sending out first req */
       first = 1;
 
-	   /* append by zjh bedin */
+	  /* append by zjh bedin */
 	  ev_timer_init(&nc->timer, mg_resolve_async_timer_cb, 1, 1);
 	  nc->timer.data = nc;
  	  ev_timer_start(nc->mgr->loop, &nc->timer);
@@ -10871,7 +10875,6 @@ static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
         nc->user_data = NULL;
         MG_FREE(req);
       }
-	  ev_timer_stop(nc->mgr->loop, &nc->timer);
       break;
   }
 }
