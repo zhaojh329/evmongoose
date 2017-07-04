@@ -3248,7 +3248,7 @@ typedef void (*mg_event_handler_t)(struct mg_connection *nc, int ev,
 struct mg_mgr {
   /* append by zjh bedin */
   struct ev_loop *loop;
-  ev_timer timer;
+ 
   /* append by zjh end */
   struct mg_connection *active_connections;
 #if MG_ENABLE_HEXDUMP
@@ -3275,6 +3275,7 @@ struct mg_connection {
   /* append by zjh bedin */
   ev_io watcher_r;					/* Io watcher for read */
   ev_io watcher_w;					/* Io watcher for write */
+  ev_timer timer;					/* Timer watcher for specific use for a particular connection */
   /* append by zjh end */
 
   sock_t sock; /* Socket to the remote peer */

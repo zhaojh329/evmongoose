@@ -582,23 +582,34 @@ ret:
 
 static int lua_mg_resolve_async(lua_State *L)
 {
-	int ref;
 	struct lua_mg_context *ctx = luaL_checkudata(L, 1, MONGOOSE_MT);
 	const char *domain = luaL_checkstring(L, 2);
 	struct mg_resolve_async_ctx *data = NULL;
+	struct mg_resolve_async_opts opts;
 	
 	luaL_checktype(L, 3, LUA_TFUNCTION);
-	ref = luaL_ref(L, LUA_REGISTRYINDEX);
 
 	data = calloc(1, sizeof(struct mg_resolve_async_ctx ));
 	if (!data)
 		luaL_error(L, "%s", strerror(errno));
 
 	data->L = L;
-	data->callback = ref;
 	strcpy(data->domain, domain);
-	
-	mg_resolve_async(&ctx->mgr, domain, MG_DNS_A_RECORD, dns_resolve_cb, data);
+
+	memset(&opts, 0, sizeof(opts));
+
+	if (lua_istable(L, 4)) {		
+		lua_getfield(L, 4, "max_retries");
+		opts.max_retries = lua_tointeger(L, -1);
+
+		lua_getfield(L, 4, "timeout");
+		opts.timeout = lua_tointeger(L, -1);
+	}
+
+	lua_settop(L, 3);
+	data->callback = luaL_ref(L, LUA_REGISTRYINDEX);
+
+	mg_resolve_async_opt(&ctx->mgr, domain, MG_DNS_A_RECORD, dns_resolve_cb, data, opts);
 	return 0;
 }
 

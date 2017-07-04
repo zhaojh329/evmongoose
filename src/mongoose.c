@@ -2112,17 +2112,6 @@ void mg_close_conn(struct mg_connection *conn) {
   mg_destroy_conn(conn, 0 /* destroy_if */);
 }
 
-static void mg_mgr_ev_timeer_cb(struct ev_loop *loop, ev_timer *w, int revents)
-{
-	struct mg_mgr *mgr = (struct mg_mgr *)w->data;
-	struct mg_connection *nc, *tmp;
-	
-	for (nc = mgr->active_connections; nc != NULL; nc = tmp) {
-		tmp = nc->next;
-		mg_if_poll(nc, (time_t) mg_time());
-	}
-}
-
 void mg_mgr_init(struct mg_mgr *m, void *user_data, struct ev_loop *loop) {
   struct mg_mgr_init_opts opts;
   memset(&opts, 0, sizeof(opts));
@@ -2130,10 +2119,6 @@ void mg_mgr_init(struct mg_mgr *m, void *user_data, struct ev_loop *loop) {
 
   /* append by zjh bedin */
   m->loop = loop ? loop : EV_DEFAULT;
-
-  ev_timer_init(&m->timer, mg_mgr_ev_timeer_cb, 1, 1);
-  m->timer.data = m;
-  ev_timer_start(loop, &m->timer);
   /* append by zjh end */
 }
 
@@ -10808,6 +10793,12 @@ int mg_resolve_from_hosts_file(const char *name, union socket_address *usa) {
   return -1;
 }
 
+static void mg_resolve_async_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	struct mg_connection *nc = (struct mg_connection *)w->data;
+	mg_call(nc, NULL, MG_EV_POLL, NULL);
+}
+
 static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
   time_t now = (time_t) mg_time();
   struct mg_resolve_async_request *req;
@@ -10826,6 +10817,11 @@ static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
     case MG_EV_CONNECT:
       /* don't depend on timer not being at epoch for sending out first req */
       first = 1;
+
+	  ev_timer_init(&nc->timer, mg_resolve_async_timer_cb, 1, 1);
+	  nc->timer.data = nc;
+ 	  ev_timer_start(nc->mgr->loop, &nc->timer);
+	  
     /* fallthrough */
     case MG_EV_POLL:
       if (req->retries > req->max_retries) {
@@ -10871,6 +10867,7 @@ static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
         nc->user_data = NULL;
         MG_FREE(req);
       }
+	  ev_timer_stop(nc->mgr->loop, &nc->timer);
       break;
   }
 }

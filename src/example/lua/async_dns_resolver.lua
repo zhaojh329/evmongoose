@@ -21,7 +21,9 @@ end
 
 local domain = arg[1] or "www.baidu.com"
 
-mgr:resolve_async(domain, dns_resolve_cb)
+-- max_retries: defaults to 5
+-- timeout:		in seconds; defaults to 5
+mgr:resolve_async(domain, dns_resolve_cb, {max_retries = 1, timeout = 2})
 
 ev.Signal.new(function(loop, sig, revents)
 	loop:unloop()
