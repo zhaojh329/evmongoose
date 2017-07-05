@@ -185,7 +185,7 @@ static void ev_websocket_frame(struct lua_mg_context *ctx, struct mg_connection 
 	else if (wm->flags & WEBSOCKET_OP_PONG)
 		lua_pushinteger(L, WEBSOCKET_OP_PONG);
 	else
-		lua_pushstring(L, "unknown");
+		lua_pushinteger(L, -1);
 		
 	lua_setfield(L, -2, "op");
 
@@ -336,11 +336,12 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 			mg_file_upload_handler(nc, ev, ev_data, http_upload_fname);
 		break;
 	}
- 
+	
 	case MG_EV_WEBSOCKET_FRAME:
+	case MG_EV_WEBSOCKET_CONTROL_FRAME:
 		ev_websocket_frame(ctx, nc, ev_data);
 		break;
-	
+		
 	default:
 		break;
 	}
@@ -931,6 +932,7 @@ int luaopen_evmongoose(lua_State *L)
 	EVMG_LUA_ADD_VARIABLE(MG_EV_WEBSOCKET_HANDSHAKE_REQUEST);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_WEBSOCKET_HANDSHAKE_DONE);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_WEBSOCKET_FRAME);
+	EVMG_LUA_ADD_VARIABLE(MG_EV_WEBSOCKET_CONTROL_FRAME);
 	
 	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_CONTINUE);
 	EVMG_LUA_ADD_VARIABLE(WEBSOCKET_OP_TEXT);

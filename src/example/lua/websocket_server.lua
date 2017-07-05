@@ -12,7 +12,16 @@ local page = [[
 	<meta charset="utf-8">
 	<title>WebSocket Test</title>
 	<script>
-		function connect(){
+		var ws = null;
+		function connect(btn){
+			if (ws) {
+				ws.close()
+				document.getElementById("btn").value="Connect"
+				ws = null;
+				return;
+			}
+			document.getElementById("btn").value = "Disconnect";
+			
 			ws = new WebSocket("ws://" + location.host);
 			ws.onopen = function() {
 				console.log("open success");
@@ -30,10 +39,20 @@ local page = [[
 	</script>
 	</head>
 	<body>
-		<button type="button" onclick="connect()">Connect</button>
+		<input type="button" id="btn" value="Connect" onclick="connect()"/>
 	</body>
 </html>
 ]]
+
+local op_str = {
+	[evmg.WEBSOCKET_OP_CONTINUE] = "continue",
+	[evmg.WEBSOCKET_OP_TEXT] = "text",
+	[evmg.WEBSOCKET_OP_BINARY] = "binary",
+	[evmg.WEBSOCKET_OP_CLOSE] = "close",
+	[evmg.WEBSOCKET_OP_PING] = "ping",
+	[evmg.WEBSOCKET_OP_PONG] = "pong",
+	[-1] = "unknown"
+}
 
 local function ev_handle(nc, event, msg)
 	if event == evmg.MG_EV_HTTP_REQUEST then
@@ -50,9 +69,11 @@ local function ev_handle(nc, event, msg)
 		for k, v in pairs(msg.headers) do
 			print(k, v)
 		end
-		
+
+	elseif event == evmg.MG_EV_WEBSOCKET_CONTROL_FRAME then
+		print("recv control frame:", op_str[msg.op])
 	elseif event == evmg.MG_EV_WEBSOCKET_FRAME then
-		print(msg.data)
+		print("recv frame", msg.data, op_str[msg.op])
 		mgr:send_websocket_frame(nc, "I is evmg", evmg.WEBSOCKET_OP_TEXT)
 	end
 end
