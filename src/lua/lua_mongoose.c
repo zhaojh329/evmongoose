@@ -235,6 +235,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 	lua_newtable(L);
 
 	switch (ev) {
+	case MG_EV_POLL:
 	case MG_EV_CLOSE:
 	case MG_EV_WEBSOCKET_HANDSHAKE_DONE:
 	case MG_EV_MQTT_PINGRESP:
@@ -700,13 +701,6 @@ static int lua_mg_mqtt_publish(lua_State *L)
 	return 0;
 }
 
-static int lua_mg_mqtt_ping(lua_State *L)
-{
-	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
-	mg_mqtt_ping(nc);
-	return 0;
-}
-
 static int lua_mg_send_head(lua_State *L)
 {
 	struct mg_connection *nc = (struct mg_connection *)(long)luaL_checkinteger(L, 2);
@@ -896,7 +890,6 @@ static const luaL_Reg mongoose_meta[] = {
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
 	{"mqtt_unsubscribe", lua_mg_mqtt_unsubscribe},
 	{"mqtt_publish", lua_mg_mqtt_publish},
-	{"mqtt_ping", lua_mg_mqtt_ping},
 	{"send_websocket_frame", lua_mg_send_websocket_frame},
 	{"send", lua_mg_send},
 	{"set_connection_flags", lua_set_connection_flags},

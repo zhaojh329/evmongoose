@@ -9665,6 +9665,10 @@ void mg_basic_auth_header(const char *user, const char *pass,
 
 #if MG_ENABLE_MQTT
 
+#ifndef MG_MQTT_PING_INTERVAL_SECONDS
+#define MG_MQTT_PING_INTERVAL_SECONDS 5
+#endif
+
 #include <string.h>
 
 /* Amalgamated: #include "mongoose/src/internal.h" */
@@ -9786,6 +9790,12 @@ static void mqtt_handler(struct mg_connection *nc, int ev, void *ev_data) {
       nc->handler(nc, MG_MQTT_EVENT_BASE + mm.cmd, &mm);
       mbuf_remove(io, io->len);
       break;
+	case MG_EV_POLL: {
+		time_t now = mg_time();
+		if (now > nc->last_io_time + MG_MQTT_PING_INTERVAL_SECONDS)
+			mg_mqtt_ping(nc);
+		break;
+	}
   }
 }
 
@@ -9898,7 +9908,9 @@ static void mg_mqtt_prepend_header(struct mg_connection *nc, uint8_t cmd,
   mbuf_insert(&nc->send_mbuf, off, buf, vlen - buf);
 
   /* append by zjh bedin */
-  ev_io_start(nc->mgr->loop, &nc->watcher_w);
+  nc->last_io_time = mg_time();
+  if (nc->sock != INVALID_SOCKET)
+  	ev_io_start(nc->mgr->loop, &nc->watcher_w);
   /* append by zjh end */
 }
 
