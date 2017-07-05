@@ -16,6 +16,11 @@ end, 5, 5)
 
 local function ev_handle(nc, event, msg)
 	if event == evmg.MG_EV_CONNECT then
+		if not msg.connected then
+			print("connect failed:", msg.err)
+			return
+		end
+	
 		local opt = {
 			user_name = "xxx",
 			password = "xxxx",
@@ -52,6 +57,7 @@ local function ev_handle(nc, event, msg)
 		if keep_alive == 0 then
 			-- Disconnect and reconnection
 			mgr:set_connection_flags(nc, evmg.MG_F_CLOSE_IMMEDIATELY)
+			keep_alive = 3
 		end
 	elseif event == evmg.MG_EV_CLOSE then
 		print("connection close:", nc)
@@ -59,7 +65,7 @@ local function ev_handle(nc, event, msg)
 		ev.Timer.new(function()
 			print("Try Reconnect to", broker)
 			mgr:connect(broker, ev_handle)
-		end, 2):start(loop)
+		end, 5):start(loop)
 	end
 end
 
