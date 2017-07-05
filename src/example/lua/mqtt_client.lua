@@ -2,8 +2,7 @@
 
 local ev = require("ev")
 local evmg = require("evmongoose")
---local loop = ev.Loop.default
-local loop = ev.Loop.new()
+local loop = ev.Loop.default
 
 local mgr = evmg.init(loop)
 
