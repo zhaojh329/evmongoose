@@ -2007,8 +2007,8 @@ static void mg_connection_timer_cb(struct ev_loop *loop, ev_timer *w, int revent
 	struct mg_connection *nc = (struct mg_connection *)w->data;
 	mg_if_poll(nc, now);
 
-	if (nc->flags & MG_F_CONNECTING && nc->last_io_time - now > 5) {
-		mg_if_connect_cb(nc, nc->err);
+	if (nc->flags & MG_F_CONNECTING && now - nc->last_io_time > 5) {
+		mg_if_connect_cb(nc, ETIMEDOUT);
 	}
 }
 /* append by zjh end */
