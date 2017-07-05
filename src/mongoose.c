@@ -2109,6 +2109,11 @@ void mg_close_conn(struct mg_connection *conn) {
   mg_remove_conn(conn);
   conn->iface->vtable->destroy_conn(conn);
   mg_call(conn, NULL, MG_EV_CLOSE, NULL);
+
+  /* append by zjh bedin */
+  ev_timer_stop(conn->mgr->loop, &conn->timer);
+  /* append by zjh end */
+
   mg_destroy_conn(conn, 0 /* destroy_if */);
 }
 
@@ -2329,6 +2334,14 @@ MG_INTERNAL struct mg_connection *mg_create_connection_base(
   return conn;
 }
 
+/* append by zjh bedin */
+static void mg_connection_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	struct mg_connection *nc = (struct mg_connection *)w->data;
+	mg_call(nc, NULL, MG_EV_POLL, NULL);
+}
+/* append by zjh end */
+
 MG_INTERNAL struct mg_connection *mg_create_connection(
     struct mg_mgr *mgr, mg_event_handler_t callback,
     struct mg_add_sock_opts opts) {
@@ -2341,6 +2354,12 @@ MG_INTERNAL struct mg_connection *mg_create_connection(
   if (conn == NULL) {
     MG_SET_PTRPTR(opts.error_string, "failed to init connection");
   }
+
+  /* append by zjh bedin */
+  ev_timer_init(&conn->timer, mg_connection_timer_cb, 1, 1);
+  conn->timer.data = conn;
+  ev_timer_start(conn->mgr->loop, &conn->timer);
+  /* append by zjh end */
 
   return conn;
 }
@@ -10793,14 +10812,6 @@ int mg_resolve_from_hosts_file(const char *name, union socket_address *usa) {
   return -1;
 }
 
-/* append by zjh bedin */
-static void mg_resolve_async_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
-{
-	struct mg_connection *nc = (struct mg_connection *)w->data;
-	mg_call(nc, NULL, MG_EV_POLL, NULL);
-}
-/* append by zjh end */
-
 static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
   time_t now = (time_t) mg_time();
   struct mg_resolve_async_request *req;
@@ -10808,11 +10819,6 @@ static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
   int first = 0;
 
   if (ev != MG_EV_POLL) DBG(("ev=%d user_data=%p", ev, nc->user_data));
-
-  /* append by zjh bedin */
-  if (ev == MG_EV_CLOSE)
-  	ev_timer_stop(nc->mgr->loop, &nc->timer);
-  /* append by zjh end */
 
   req = (struct mg_resolve_async_request *) nc->user_data;
   if (req == NULL) {
@@ -10823,12 +10829,6 @@ static void mg_resolve_async_eh(struct mg_connection *nc, int ev, void *data) {
     case MG_EV_CONNECT:
       /* don't depend on timer not being at epoch for sending out first req */
       first = 1;
-
-	  /* append by zjh bedin */
-	  ev_timer_init(&nc->timer, mg_resolve_async_timer_cb, 1, 1);
-	  nc->timer.data = nc;
- 	  ev_timer_start(nc->mgr->loop, &nc->timer);
-	  /* append by zjh end */
 	  
     /* fallthrough */
     case MG_EV_POLL:

@@ -911,7 +911,8 @@ int luaopen_evmongoose(lua_State *L)
 
 	lua_newtable(L);
 	luaL_register(L, NULL, mongoose_fun);
-
+	
+	EVMG_LUA_ADD_VARIABLE(MG_EV_POLL);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_CONNECT);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_CLOSE);
 	EVMG_LUA_ADD_VARIABLE(MG_EV_RECV);
