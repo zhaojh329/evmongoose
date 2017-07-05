@@ -56,7 +56,6 @@ local function ev_handle(nc, event, msg)
 	elseif event == evmg.MG_EV_CLOSE then
 		print("connection close:", nc)
 		
-		alive = 3
 		ev.Timer.new(function()
 			print("Try Reconnect to", broker)
 			mgr:connect(broker, ev_handle)
