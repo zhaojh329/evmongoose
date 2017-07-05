@@ -34,7 +34,10 @@ local function ev_handle(nc, event, msg)
 	return true
 end
 
-mgr:bind("8000", ev_handle, {proto = "http"})
+-- document_root: Default is "."
+-- index_files: Default is "index.html,index.htm,index.shtml,index.cgi,index.php"
+-- enable_directory_listing: Default if false
+mgr:bind("8000", ev_handle, {proto = "http", enable_directory_listing = true})
 print("Listen on http 8000...")
 
 mgr:bind("7443", ev_handle, {proto = "http", ssl_cert = "server.pem", ssl_key = "server.key"})

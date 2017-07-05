@@ -378,6 +378,13 @@ static int lua_mg_bind(lua_State *L)
 		lua_getfield(L, 4, "document_root");
 		lcon->http_opts.document_root = lua_tostring(L, -1);
 
+		lua_getfield(L, 4, "index_files");
+		lcon->http_opts.index_files = lua_tostring(L, -1);
+
+		lua_getfield(L, 4, "enable_directory_listing");
+		if (!lua_toboolean(L, -1))
+			lcon->http_opts.enable_directory_listing = "no";
+			
 		lua_getfield(L, 4, "url_rewrites");
 		lcon->http_opts.url_rewrites = lua_tostring(L, -1);
 		
