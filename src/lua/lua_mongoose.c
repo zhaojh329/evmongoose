@@ -244,7 +244,7 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 		break;
 	
 	case MG_EV_CONNECT: {
-		int err = *(int *) ev_data;
+		int err = *(int *)ev_data;
 		lua_pushboolean(L, !err);
 		lua_setfield(L, -2, "connected");
 
