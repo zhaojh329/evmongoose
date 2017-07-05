@@ -2010,6 +2010,11 @@ static void mg_connection_timer_cb(struct ev_loop *loop, ev_timer *w, int revent
 	if (nc->flags & MG_F_CONNECTING && now - nc->last_io_time > 5) {
 		mg_if_connect_cb(nc, ETIMEDOUT);
 	}
+
+	if ((nc->flags & MG_F_CLOSE_IMMEDIATELY) || 
+		(nc->send_mbuf.len == 0 && (nc->flags & MG_F_SEND_AND_CLOSE))) {
+			mg_close_conn(nc);
+	}
 }
 /* append by zjh end */
 
