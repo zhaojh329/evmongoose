@@ -3276,6 +3276,7 @@ struct mg_connection {
   ev_io watcher_r;					/* Io watcher for read */
   ev_io watcher_w;					/* Io watcher for write */
   ev_timer timer;					/* Timer watcher for specific use for a particular connection */
+  time_t last_ping_time;			/* Timestamp of the last Ping for Websocket and MQTT */
   /* append by zjh end */
 
   sock_t sock; /* Socket to the remote peer */
