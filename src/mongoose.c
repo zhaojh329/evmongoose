@@ -2338,7 +2338,7 @@ MG_INTERNAL struct mg_connection *mg_create_connection_base(
 static void mg_connection_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
 {
 	struct mg_connection *nc = (struct mg_connection *)w->data;
-	mg_call(nc, NULL, MG_EV_POLL, NULL);
+	mg_if_poll(nc, mg_time());
 }
 /* append by zjh end */
 
