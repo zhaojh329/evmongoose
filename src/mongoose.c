@@ -2003,8 +2003,13 @@ void mg_tun_destroy_client(struct mg_tun_client *client);
 /* append by zjh bedin */
 static void mg_connection_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
 {
+	time_t now = mg_time();
 	struct mg_connection *nc = (struct mg_connection *)w->data;
-	mg_if_poll(nc, mg_time());
+	mg_if_poll(nc, now);
+
+	if (nc->flags & MG_F_CONNECTING && nc->last_io_time - now > 5) {
+		mg_if_connect_cb(nc, nc->err);
+	}
 }
 /* append by zjh end */
 
