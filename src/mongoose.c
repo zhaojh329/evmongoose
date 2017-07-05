@@ -2000,6 +2000,14 @@ void mg_tun_destroy_client(struct mg_tun_client *client);
 #define intptr_t long
 #endif
 
+/* append by zjh bedin */
+static void mg_connection_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	struct mg_connection *nc = (struct mg_connection *)w->data;
+	mg_if_poll(nc, mg_time());
+}
+/* append by zjh end */
+
 MG_INTERNAL void mg_add_conn(struct mg_mgr *mgr, struct mg_connection *c) {
   DBG(("%p %p", mgr, c));
   c->mgr = mgr;
@@ -2010,6 +2018,14 @@ MG_INTERNAL void mg_add_conn(struct mg_mgr *mgr, struct mg_connection *c) {
   if (c->sock != INVALID_SOCKET) {
     c->iface->vtable->add_conn(c);
   }
+
+  /* append by zjh bedin */
+  if (!(c->flags & MG_F_LISTENING)) {
+  	ev_timer_init(&c->timer, mg_connection_timer_cb, 1, 1);
+  	c->timer.data = c;
+  	ev_timer_start(c->mgr->loop, &c->timer);
+  }
+  /* append by zjh end */
 }
 
 MG_INTERNAL void mg_remove_conn(struct mg_connection *conn) {
@@ -2111,7 +2127,8 @@ void mg_close_conn(struct mg_connection *conn) {
   mg_call(conn, NULL, MG_EV_CLOSE, NULL);
 
   /* append by zjh bedin */
-  ev_timer_stop(conn->mgr->loop, &conn->timer);
+  if (!(conn->flags & MG_F_LISTENING))
+	ev_timer_stop(conn->mgr->loop, &conn->timer);
   /* append by zjh end */
 
   mg_destroy_conn(conn, 0 /* destroy_if */);
@@ -2334,14 +2351,6 @@ MG_INTERNAL struct mg_connection *mg_create_connection_base(
   return conn;
 }
 
-/* append by zjh bedin */
-static void mg_connection_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
-{
-	struct mg_connection *nc = (struct mg_connection *)w->data;
-	mg_if_poll(nc, mg_time());
-}
-/* append by zjh end */
-
 MG_INTERNAL struct mg_connection *mg_create_connection(
     struct mg_mgr *mgr, mg_event_handler_t callback,
     struct mg_add_sock_opts opts) {
@@ -2354,12 +2363,6 @@ MG_INTERNAL struct mg_connection *mg_create_connection(
   if (conn == NULL) {
     MG_SET_PTRPTR(opts.error_string, "failed to init connection");
   }
-
-  /* append by zjh bedin */
-  ev_timer_init(&conn->timer, mg_connection_timer_cb, 1, 1);
-  conn->timer.data = conn;
-  ev_timer_start(conn->mgr->loop, &conn->timer);
-  /* append by zjh end */
 
   return conn;
 }
