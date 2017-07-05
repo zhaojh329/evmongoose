@@ -7,6 +7,12 @@ local loop = ev.Loop.default
 local mgr = evmg.init(loop)
 
 local alive = 3
+local broker = arg[1] or "localhost:1883"
+
+local alive_timer = ev.Timer.new(function(loop, w, event)
+	alive = alive - 1
+	if alive == 0 then w:stop(loop) end
+end, 5, 5)
 
 local function ev_handle(nc, event, msg)
 	if event == evmg.MG_EV_CONNECT then
@@ -29,7 +35,8 @@ local function ev_handle(nc, event, msg)
 		local msg_id = 12
 
 		mgr:mqtt_subscribe(nc, topic, msg_id);
-		
+
+		alive_timer:start(loop)
 	elseif event == evmg.MG_EV_MQTT_SUBACK then
 		print("suback, msgid = ", msg.message_id)
 		
@@ -39,7 +46,7 @@ local function ev_handle(nc, event, msg)
 		
 	elseif event == evmg.MG_EV_MQTT_PINGRESP then
 		print("Recv PingResp:", nc)
-		alive = 5
+		alive = 3
 
 	elseif event == evmg.MG_EV_POLL then
 		if alive == 0 then
@@ -49,18 +56,15 @@ local function ev_handle(nc, event, msg)
 	elseif event == evmg.MG_EV_CLOSE then
 		print("connection close:", nc)
 		
+		alive = 3
 		ev.Timer.new(function()
-			print("Try Reconnect...")
-			mgr:connect("localhost:1883", ev_handle)
+			print("Try Reconnect to", broker)
+			mgr:connect(broker, ev_handle)
 		end, 2):start(loop)
 	end
 end
 
-mgr:connect("localhost:1883", ev_handle)
-
-ev.Timer.new(function()
-	alive = alive - 1
-end, 5, 5):start(loop)
+mgr:connect(broker, ev_handle)
 
 ev.Signal.new(function(loop, sig, revents)
 	loop:unloop()
