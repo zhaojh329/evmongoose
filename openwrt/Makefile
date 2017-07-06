@@ -35,7 +35,7 @@ menu "Configuration"
 
 	config EVMONGOOSE_GZIP
 		bool
-		default y
+		default n
 		prompt "Enable HTTP gzip module"
 	
 	choice
