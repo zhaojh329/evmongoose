@@ -8,11 +8,15 @@
 #define MONGOOSE_MT "mongoose"
 #define MONGOOSE_CONN_MT "mongoose.connection"
 
+#define LUA_MG_F_HTTP	(1 << 0)
+#define LUA_MG_F_DEBUG	(1 << 1)
+
 struct lua_mg_connection {
 	struct mg_serve_http_opts http_opts;
 	struct mg_connection *nc;
 	int fufn;
 	int callback;
+	unsigned flags;
 	struct list_head node;
 };
 
@@ -254,19 +258,22 @@ static void ev_handler(struct mg_connection *nc, int ev, void *ev_data)
 		lua_call(L, 3, 1);
 		break;
 	}
-	
-	case MG_EV_RECV: {		
-		struct mbuf *io = &nc->recv_mbuf;
-		lua_pushlstring(L, io->buf, io->len);
-		lua_setfield(L, -2, "data");
 
-		lua_call(L, 3, 1);
+	case MG_EV_RECV: {
+		if (!(lcon->flags & LUA_MG_F_HTTP) || (lcon->flags & LUA_MG_F_DEBUG)) {
+			struct mbuf *io = &nc->recv_mbuf;
+			
+			lua_pushlstring(L, io->buf, io->len);
+			lua_setfield(L, -2, "data");
 
-		if (lua_toboolean(L, -1))
-			mbuf_remove(io, io->len);
+			lua_call(L, 3, 1);
+
+			if (lua_toboolean(L, -1))
+				mbuf_remove(io, io->len);
+		}
 		break;
 	}
-		
+
 	case MG_EV_MQTT_CONNACK: {
 		struct mg_mqtt_message *msg = (struct mg_mqtt_message *)ev_data;
 		lua_pushinteger(L, msg->connack_ret_code);
@@ -402,7 +409,10 @@ static int lua_mg_bind(lua_State *L)
 		
 		lua_getfield(L, 4, "ssl_cipher_suites");
 		opts.ssl_cipher_suites = lua_tostring(L, -1);
-#endif		
+#endif
+		lua_getfield(L, 4, "debug");
+		if (lua_toboolean(L, -1))
+			lcon->flags |= LUA_MG_F_DEBUG;
 	}
 
 	lua_settop(L, 3);
@@ -416,8 +426,10 @@ static int lua_mg_bind(lua_State *L)
 
 	list_add(&lcon->node, &ctx->lua_mg_con_list);
 
-	if (proto && !strcmp(proto, "http"))
+	if (proto && !strcmp(proto, "http")) {
 		mg_set_protocol_http_websocket(nc);
+		lcon->flags |= LUA_MG_F_HTTP;
+	}
 
 	lua_pushinteger(L, (long)nc);
 
@@ -520,6 +532,10 @@ static int lua_mg_connect_http(lua_State *L)
 
 		lua_getfield(L, 4, "post_data");
 		post_data = lua_tostring(L, -1);
+
+		lua_getfield(L, 4, "debug");
+		if (lua_toboolean(L, -1))
+			lcon->flags |= LUA_MG_F_DEBUG;
 	}
 
 	lua_settop(L, 3);
@@ -532,6 +548,7 @@ static int lua_mg_connect_http(lua_State *L)
 	}
 
 	lcon->nc = nc;
+	lcon->flags |= LUA_MG_F_HTTP;
 	list_add(&lcon->node, &ctx->lua_mg_con_list);
 	
 	lua_pushinteger(L, (long)nc);

@@ -28,7 +28,14 @@ local function ev_handle(nc, event, msg)
 	end
 end
 
---local opt = {extra_headers = "Accept-Encoding: gzip\r\n"}
+-- Supported opt:
+-- extra_headers	Such as "Accept-Encoding: gzip\r\n"
+-- debug			if set true, you can deal raw data by MG_EV_RECV
+-- ssl_cert
+-- ssl_key
+-- ssl_ca_cert
+-- ssl_cipher_suites
+local opt  = {}
 mgr:connect_http("http://www.baidu.com", ev_handle, opt)
 
 ev.Signal.new(function(loop, sig, revents)

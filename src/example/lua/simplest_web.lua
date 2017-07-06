@@ -34,9 +34,12 @@ local function ev_handle(nc, event, msg)
 	return true
 end
 
--- document_root: Default is "."
--- index_files: Default is "index.html,index.htm,index.shtml,index.cgi,index.php"
--- enable_directory_listing: Default if false
+-- Supported opt:
+-- proto						Must be set to "http" for a http or https server, also includes websocket server
+-- document_root				Default is "."
+-- index_files					Default is "index.html,index.htm,index.shtml,index.cgi,index.php"
+-- enable_directory_listing		Default if false
+-- debug						If set true, you can deal raw data by MG_EV_RECV
 mgr:bind("8000", ev_handle, {proto = "http", enable_directory_listing = true})
 print("Listen on http 8000...")
 
