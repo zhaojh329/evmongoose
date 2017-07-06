@@ -7,10 +7,10 @@ PKG_RELEASE:=$(PKG_SOURCE_VERSION)
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/zhaojh329/evmongoose.git
-PKG_SOURCE_VERSION:=9d3e0625628bb5d6edc1b9215d287294b88b68e9
+PKG_SOURCE_VERSION:=8e0184c04443d12b65ba033100f7871327bc7a3a
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 
-PKG_CONFIG_DEPENDS:= CONFIG_EVMONGOOSE_SSL_NONE CONFIG_EVMONGOOSE_SSL_OPENSSL CONFIG_EVMONGOOSE_SSL_MBEDTLS
+PKG_CONFIG_DEPENDS:= CONFIG_EVMONGOOSE_SSL_NONE CONFIG_EVMONGOOSE_SSL_OPENSSL CONFIG_EVMONGOOSE_SSL_MBEDTLS CONFIG_EVMONGOOSE_GZIP
 
 include $(INCLUDE_DIR)/package.mk
 include $(INCLUDE_DIR)/cmake.mk
@@ -21,7 +21,7 @@ define Package/evmongoose
   SUBMENU:=Networking
   TITLE:=An asynchronous, event(libev) based multi-protocol embedded networking library
   URL:=https://github.com/zhaojh329/evmongoose
-  DEPENDS:=+libev +lua-ev +EVMONGOOSE_SSL_OPENSSL:libopenssl +EVMONGOOSE_SSL_MBEDTLS:libmbedtls
+  DEPENDS:=+libev +lua-ev +EVMONGOOSE_SSL_OPENSSL:libopenssl +EVMONGOOSE_SSL_MBEDTLS:libmbedtls +EVMONGOOSE_GZIP:lua-lzlib
 endef
 
 define Package/evmongoose/description
@@ -33,6 +33,11 @@ define Package/evmongoose/config
 menu "Configuration"
 	depends on PACKAGE_evmongoose
 
+	config EVMONGOOSE_GZIP
+		bool
+		default y
+		prompt "Enable HTTP gzip module"
+	
 	choice
 		prompt "Selected SSL library"
 		default EVMONGOOSE_SSL_NONE
