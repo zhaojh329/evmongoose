@@ -40,9 +40,9 @@ could not add my own objects. For example, I want to monitor a signal or a file 
 # How To Compile
 ## For Ubuntu
 ### Install dependency Libraries
-* libev-dev libssl-dev lua5.1 liblua5.1-0-dev
+* libev-dev libssl-dev lua5.1 liblua5.1-0-dev lua-zlib
 
-		sudo apt install libev-dev libssl-dev lua5.1 liblua5.1-0-dev
+		sudo apt install libev-dev libssl-dev lua5.1 liblua5.1-0-dev lua-zlib
 
 * lua-ev
 

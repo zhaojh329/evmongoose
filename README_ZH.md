@@ -38,9 +38,9 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
 # 编译
 ## 在Ubuntu上运行
 ### 安装依赖库
-* libev-dev libssl-dev lua5.1 liblua5.1-0-dev
+* libev-dev libssl-dev lua5.1 liblua5.1-0-dev lua-zlib
 	
-		sudo apt install libev-dev libssl-dev lua5.1 liblua5.1-0-dev
+		sudo apt install libev-dev libssl-dev lua5.1 liblua5.1-0-dev lua-zlib
 
 * lua-ev
 

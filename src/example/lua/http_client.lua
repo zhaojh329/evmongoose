@@ -2,9 +2,8 @@
 
 local ev = require("ev")
 local evmg = require("evmongoose")
---local loop = ev.Loop.default
-local loop = ev.Loop.new()
-
+local lz = require "zlib"
+local loop = ev.Loop.default
 local mgr = evmg.init(loop)
 
 local function ev_handle(nc, event, msg)
@@ -19,11 +18,18 @@ local function ev_handle(nc, event, msg)
 			print(k .. ": ", v)
 		end
 
-		print("body:", msg.body)
+		local body = msg.body
+		if msg.headers["Content-Encoding"] == "gzip" then
+			print("Decode Gzip...")
+			body = lz.inflate()(body, "finish")
+		end
+		print("body:")
+		print(body)
 	end
 end
 
-mgr:connect_http("http://www.baidu.com", ev_handle)
+--local opt = {extra_headers = "Accept-Encoding: gzip\r\n"}
+mgr:connect_http("http://www.baidu.com", ev_handle, opt)
 
 ev.Signal.new(function(loop, sig, revents)
 	loop:unloop()
