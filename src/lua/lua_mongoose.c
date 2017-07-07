@@ -887,6 +887,12 @@ static int lua_forkpty(lua_State *L)
 	return 2;
 }
 
+static int lua_mg_time(lua_State *L)
+{
+	lua_pushnumber(L, mg_time());
+	return 1;
+}
+
 static const luaL_Reg mongoose_meta[] = {
 	{"__gc", mg_ctx_destroy},
 	{"destroy", mg_ctx_destroy},
@@ -916,6 +922,7 @@ static const luaL_Reg mongoose_meta[] = {
 static const luaL_Reg mongoose_fun[] = {
 	{"init", mg_ctx_init},
 	{"forkpty", lua_forkpty},
+	{"mg_time", lua_mg_time},
 	{NULL, NULL}
 };
 
