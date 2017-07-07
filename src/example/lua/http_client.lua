@@ -30,7 +30,8 @@ end
 
 -- Supported opt:
 -- extra_headers	Such as "Accept-Encoding: gzip\r\n"
--- debug			if set true, you can deal raw data by MG_EV_RECV
+-- debug			If set true, you can deal raw data by MG_EV_RECV
+-- post_data		Data to upload
 -- ssl_cert
 -- ssl_key
 -- ssl_ca_cert
