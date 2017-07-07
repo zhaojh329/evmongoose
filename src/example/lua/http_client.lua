@@ -5,6 +5,7 @@ local evmg = require("evmongoose")
 local lz = require "zlib"
 local loop = ev.Loop.default
 local mgr = evmg.init(loop)
+local url = arg[1] or "http://www.baidu.com"
 
 local function ev_handle(nc, event, msg)
 	if event == evmg.MG_EV_CONNECT then
@@ -37,7 +38,8 @@ end
 -- ssl_ca_cert
 -- ssl_cipher_suites
 local opt  = {}
-mgr:connect_http("http://www.baidu.com", ev_handle, opt)
+
+mgr:connect_http(url, ev_handle, opt)
 
 ev.Signal.new(function(loop, sig, revents)
 	loop:unloop()
