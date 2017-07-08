@@ -257,6 +257,8 @@ static int lua_mg_connect(lua_State *L)
 	con->user_data = lcon;
 	lcon->con = con;
 
+	lua_settop(L, 1);
+	
 	return 1;
 }
 
@@ -304,6 +306,8 @@ static int lua_mg_connect_http(lua_State *L)
 	con->user_data = lcon;
 	lcon->con = con;
 
+	lua_settop(L, 1);
+	
 	return 1;
 }
 
@@ -366,6 +370,8 @@ static int lua_mg_listen(lua_State *L)
 		lcon->flags |= EVMG_F_LISTENING;
 		mg_set_protocol_http_websocket(con);
 	}
+
+	lua_settop(L, 1);
 	
 	return 1;
 }
