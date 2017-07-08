@@ -739,7 +739,6 @@ static int lua_mg_mqtt_handshake(lua_State *L)
 	sprintf(client_id, "evmongoose:%f", mg_time());
 
 	if (lua_istable(L, 2)) {
-		printf("lua_mg_mqtt_handshake\n");
 		lua_getfield(L, 2, "user_name");
 		opts.user_name = lua_tostring(L, -1);
 
