@@ -133,8 +133,6 @@ static void *lua_obj_new(lua_State* L, size_t size, const char *tname)
 	lua_pushlightuserdata(L, obj);
     lua_pushvalue(L, -3);
     lua_rawset(L, -3);
-		
-	lua_pop(L, 2);
 	
     return obj;
 }
@@ -257,7 +255,7 @@ static int lua_mg_connect(lua_State *L)
 	con->user_data = lcon;
 	lcon->con = con;
 
-	lua_settop(L, 1);
+	lua_settop(L, 5);
 	
 	return 1;
 }
@@ -306,7 +304,7 @@ static int lua_mg_connect_http(lua_State *L)
 	con->user_data = lcon;
 	lcon->con = con;
 
-	lua_settop(L, 1);
+	lua_settop(L, 5);
 	
 	return 1;
 }
@@ -371,7 +369,7 @@ static int lua_mg_listen(lua_State *L)
 		mg_set_protocol_http_websocket(con);
 	}
 
-	lua_settop(L, 1);
+	lua_settop(L, 5);
 	
 	return 1;
 }
