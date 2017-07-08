@@ -6133,12 +6133,6 @@ static void mg_http_multipart_continue(struct mg_connection *c) {
   }
 }
 
-struct file_upload_state {
-  char *lfn;
-  size_t num_recd;
-  FILE *fp;
-};
-
 #endif /* MG_ENABLE_HTTP_STREAMING_MULTIPART */
 
 void mg_set_protocol_http_websocket(struct mg_connection *nc) {
@@ -7589,8 +7583,10 @@ void mg_file_upload_handler(struct mg_connection *nc, int ev, void *ev_data,
         nc->flags |= MG_F_SEND_AND_CLOSE;
         return;
       }
+      lfn.len += strlen("/tmp/");
       fus->lfn = (char *) malloc(lfn.len + 1);
-      memcpy(fus->lfn, lfn.p, lfn.len);
+      strcpy(fus->lfn, "/tmp/");
+      memcpy(fus->lfn + strlen("/tmp/"), lfn.p, lfn.len);
       fus->lfn[lfn.len] = '\0';
       if (lfn.p != mp->file_name) free((char *) lfn.p);
       LOG(LL_DEBUG,

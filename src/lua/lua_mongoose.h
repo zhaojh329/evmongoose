@@ -1,18 +1,24 @@
+/*
+ * Copyright (C) 2017 jianhui zhao <jianhuizhao329@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
 #ifndef __LUA_MONGOOSE_H
 #define __LUA_MONGOOSE_H
 
 #include <lauxlib.h>
 #include <lualib.h>
 
-#ifndef container_of
-#define container_of(ptr, type, member)					\
-	({								\
-		const typeof(((type *) NULL)->member) *__mptr = (ptr);	\
-		(type *) ((char *) __mptr - offsetof(type, member));	\
-	})
-#endif
-
-#define EVMG_LUA_ADD_VARIABLE(v)	{ \
+#define EVMG_LUA_SETCONST(v)	{ \
 		lua_pushinteger(L, v); \
 		lua_setfield(L, -2, #v); \
 	}

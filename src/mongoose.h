@@ -4699,6 +4699,12 @@ void mg_http_serve_file(struct mg_connection *nc, struct http_message *hm,
 
 #if MG_ENABLE_HTTP_STREAMING_MULTIPART
 
+struct file_upload_state {
+  char *lfn;
+  size_t num_recd;
+  FILE *fp;
+};
+
 /* Callback prototype for `mg_file_upload_handler()`. */
 typedef struct mg_str (*mg_fu_fname_fn)(struct mg_connection *nc,
                                         struct mg_str fname);

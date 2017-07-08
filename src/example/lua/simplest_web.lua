@@ -2,48 +2,63 @@
 
 local ev = require("ev")
 local evmg = require("evmongoose")
---local loop = ev.Loop.default
-local loop = ev.Loop.new()
+local loop = ev.Loop.default
 
-local mgr = evmg.init(loop)
+local function ev_handle(con, event)
+	if event ~= evmg.MG_EV_HTTP_REQUEST then return end
 
-local function ev_handle(nc, event, msg)
-	if event ~= evmg.MG_EV_HTTP_REQUEST or msg.uri ~= "/luatest" then
-		return false
+	local uri = con:uri()
+
+	print("uri:", uri)
+
+	if uri ~= "/luatest" then return end
+
+	print("method:", con:method())
+	print("proto:", con:proto())
+	print("query_string:", con:query_string())
+	print("remote_addr:", con:remote_addr())
+
+	local headers = con:headers()
+		for k, v in pairs(headers) do
+		print(k .. ": ", v)
 	end
 
-	mgr:send_head(nc, 200, -1)
-	
-	mgr:print_http_chunk(nc, "<h1>method:" .. msg.method .. "</h1>")
-	mgr:print_http_chunk(nc, "<h1>uri:" .. msg.uri .. "</h1>")
-	mgr:print_http_chunk(nc, "<h1>proto:" .. msg.proto .. "</h1>")
-	mgr:print_http_chunk(nc, "<h1>query_string:" .. msg.query_string .. "</h1>")
-	mgr:print_http_chunk(nc, "<h1>remote_addr:" .. msg.remote_addr .. "</h1>")
+	local body = con:body()
 
-	for k, v in pairs(msg.headers) do
-		mgr:print_http_chunk(nc, "<h1>" .. k .. ": " .. v ..  "</h1>")
+	if headers["Content-Encoding"] == "gzip" then
+		print("Decode Gzip...")
+		body = lz.inflate()(body, "finish")
 	end
 
-	local body = mgr:get_http_body(msg.hm) or ""
+	print("body:", body)
 
-	print(body)
-	mgr:print_http_chunk(nc, "<h1>body:" .. body ..  "</h1>")
-	
-	mgr:print_http_chunk(nc, "")
+	local rsp = "Hello, I'm Evmongoose"
 
+	local chunk = true
+	if chunk then
+		con:send_http_head(200, -1)
+		con:send_http_chunk(rsp)
+		con:send_http_chunk("")
+	else
+		con:send_http_head(200, #rsp)
+		con:send(rsp)
+	end
+
+	-- Must return true, if dealed by user
 	return true
 end
+
+local mgr = evmg.init(loop)
 
 -- Supported opt:
 -- proto						Must be set to "http" for a http or https server, also includes websocket server
 -- document_root				Default is "."
 -- index_files					Default is "index.html,index.htm,index.shtml,index.cgi,index.php"
 -- enable_directory_listing		Default if false
--- debug						If set true, you can deal raw data by MG_EV_RECV
-mgr:bind("8000", ev_handle, {proto = "http", enable_directory_listing = true})
+mgr:listen(ev_handle, "8000", {proto = "http", enable_directory_listing = true})
 print("Listen on http 8000...")
 
-mgr:bind("7443", ev_handle, {proto = "http", ssl_cert = "server.pem", ssl_key = "server.key"})
+mgr:listen(ev_handle, "7443", {proto = "http", ssl_cert = "server.pem", ssl_key = "server.key"})
 print("Listen on https 7443...")
 
 ev.Signal.new(function(loop, sig, revents)
@@ -51,7 +66,5 @@ ev.Signal.new(function(loop, sig, revents)
 end, ev.SIGINT):start(loop)
 
 loop:loop()
-
-mgr:destroy()
 
 print("exit...")

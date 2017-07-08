@@ -2,10 +2,7 @@
 
 local ev = require("ev")
 local evmg = require("evmongoose")
---local loop = ev.Loop.default
-local loop = ev.Loop.new()
-
-local mgr = evmg.init(loop)
+local loop = ev.Loop.default
 
 local sessions = {}
 
@@ -43,47 +40,6 @@ local function del_session(sid)
 	return nil
 end
 
-local function ev_handle(nc, event, msg)
-	if event == evmg.MG_EV_HTTP_REQUEST then
-		if msg.uri == "/login.html" then
-			if msg.method ~= "POST" then return end
-
-			local user = mgr:get_http_var(msg.hm, "user")
-			local pass = mgr:get_http_var(msg.hm, "pass")
-
-			if user and user == "zjh" and pass and pass == "123456" then
-				local sid = generate_sid()
-				sessions[#sessions + 1] = {sid = sid, alive = 6}
-				mgr:http_send_redirect(nc, 302, "/", "Set-Cookie: mgs=" .. sid .. "; path=/");
-			else
-				mgr:http_send_redirect(nc, 302, "/login.html")
-			end
-			return true
-		end
-
-		local cookie = msg.headers["Cookie"] or ""
-		local sid = cookie:match("mgs=(%w+)")
-
-		if not find_session(sid) then
-			mgr:http_send_redirect(nc, 302, "/login.html")
-			return true
-		end
-
-		if msg.uri == "/logout" then
-			del_session(sid)
-			mgr:http_send_redirect(nc, 302, "/", "Set-Cookie: mgs=");
-			return true
-		end
-	end
-end
-
-mgr:bind("8080", ev_handle, {proto = "http"})
-print("Listen on http 8080...")
-
-ev.Signal.new(function(loop, sig, revents)
-	loop:unloop()
-end, ev.SIGINT):start(loop)
-
 ev.Timer.new(function(loop, timer, revents)
 	for i, s in ipairs(sessions) do
 		s.alive = s.alive - 1
@@ -96,8 +52,49 @@ end, 5, 5):start(loop)
 		
 math.randomseed(tostring(os.time()):reverse():sub(1, 6))
 
-loop:loop()
+local function ev_handle(con, event)
+	if event == evmg.MG_EV_HTTP_REQUEST then
+		if con:uri() == "/login.html" then
+			if con:method() ~= "POST" then return end
 
-mgr:destroy()
+			local user = con:get_http_var("user")
+			local pass = con:get_http_var("pass")
+
+			if user and user == "zjh" and pass and pass == "123456" then
+				local sid = generate_sid()
+				sessions[#sessions + 1] = {sid = sid, alive = 6}
+				con:send_http_redirect(302, "/", "Set-Cookie: mgs=" .. sid .. "; path=/");
+			else
+				con:send_http_redirect(302, "/login.html")
+			end
+			return true
+		end
+
+		local cookie = con:headers()["Cookie"] or ""
+		local sid = cookie:match("mgs=(%w+)")
+
+		if not find_session(sid) then
+			con:send_http_redirect(302, "/login.html")
+			return true
+		end
+
+		if con:uri() == "/logout" then
+			del_session(sid)
+			con:send_http_redirect(302, "/", "Set-Cookie: mgs=");
+			return true
+		end
+	end
+end
+
+local mgr = evmg.init(loop)
+
+mgr:listen(ev_handle, "8000", {proto = "http"})
+print("Listen on http 8000...")
+
+ev.Signal.new(function(loop, sig, revents)
+	loop:unloop()
+end, ev.SIGINT):start(loop)
+
+loop:loop()
 
 print("exit...")

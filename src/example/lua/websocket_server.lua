@@ -3,7 +3,6 @@
 local ev = require("ev")
 local evmg = require("evmongoose")
 local loop = ev.Loop.default
-local mgr = evmg.init()
 
 local page = [[
 <!DOCTYPE html>
@@ -54,31 +53,35 @@ local op_str = {
 	[-1] = "unknown"
 }
 
-local function ev_handle(nc, event, msg)
+local function ev_handle(con, event)
 	if event == evmg.MG_EV_HTTP_REQUEST then
-		mgr:send_head(nc, 200, #page)
-		mgr:print(nc, page)
-		return true
+		con:send_http_head(200, #page)
+		con:send(page)
 		
 	elseif event == evmg.MG_EV_WEBSOCKET_HANDSHAKE_REQUEST then
-		print("method:", msg.method)
-		print("uri:", msg.uri)
-		print("proto:", msg.proto)
-		print("query_string:", msg.query_string)
+		print("method:", con:method())
+		print("uri:", con:uri())
+		print("proto:", con:proto())
+		print("query_string:", con:query_string())
+		print("remote_addr:", con:remote_addr())
 
-		for k, v in pairs(msg.headers) do
-			print(k, v)
+		local headers = con:headers()
+			for k, v in pairs(headers) do
+			print(k .. ": ", v)
 		end
 
 	elseif event == evmg.MG_EV_WEBSOCKET_CONTROL_FRAME then
-		print("recv control frame:", op_str[msg.op])
+		print("recv control frame:", op_str[con:websocket_op()])
+		
 	elseif event == evmg.MG_EV_WEBSOCKET_FRAME then
-		print("recv frame", msg.data, op_str[msg.op])
-		mgr:send_websocket_frame(nc, "I is evmg", evmg.WEBSOCKET_OP_TEXT)
+		print("recv frame", con:websocket_frame(), op_str[con:websocket_op()])
+		con:send_websocket_frame("I is evmg", evmg.WEBSOCKET_OP_TEXT)
 	end
 end
 
-mgr:bind("8000", ev_handle, {proto = "http"})
+local mgr = evmg.init(loop)
+
+mgr:listen(ev_handle, "8000", {proto = "http"})
 print("Listen on http 8000...")
 
 ev.Signal.new(function(loop, sig, revents)
@@ -86,7 +89,5 @@ ev.Signal.new(function(loop, sig, revents)
 end, ev.SIGINT):start(loop)
 
 loop:loop()
-
-mgr:destroy()
 
 print("exit...")
