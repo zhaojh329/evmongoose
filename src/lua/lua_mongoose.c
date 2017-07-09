@@ -177,6 +177,27 @@ static void lua_mg_ev_handler(struct mg_connection *con, int ev, void *ev_data)
 	lua_pop(L, 1);
 
 	lua_pushinteger(L, ev);
+
+	if (ev == MG_EV_HTTP_PART_END) {
+		struct mg_http_multipart_part *mp = (struct mg_http_multipart_part *)ev_data;
+		struct file_upload_state *fus = (struct file_upload_state *)mp->user_data;
+
+		con->flags |= MG_F_SEND_AND_CLOSE;
+		
+		if (fus) {
+			if (mp->status >= 0 && fus->fp) {
+				mg_printf(con, "HTTP/1.1 200 OK\r\n"
+								"Content-Type: text/plain\r\n"
+								"Connection: close\r\n\r\n"
+								"Ok, %s - %d bytes.\r\n",
+								mp->file_name, (int)fus->num_recd);
+			}else {
+				/* mp->status < 0 means connection was terminated, so no reason to send HTTP reply */
+			}
+
+			if (fus->fp) fclose(fus->fp);
+		}
+	}
 	
 	if (lua_pcall(L, 2, 1, -5) ) {
 		/* TODO: Enable user-specified error handler! */
@@ -191,7 +212,71 @@ static void lua_mg_ev_handler(struct mg_connection *con, int ev, void *ev_data)
 		if (lcon->flags & EVMG_F_LISTENING && !ret)
 			mg_serve_http(con, ev_data, lcon->http_opts);		/* Serve static content */
 		break;
-		
+
+	case MG_EV_HTTP_PART_BEGIN:
+		if (!ret) {
+			struct mg_http_multipart_part *mp = (struct mg_http_multipart_part *)ev_data;
+			struct file_upload_state *fus = calloc(1, sizeof(struct file_upload_state));
+
+			mp->user_data = NULL;
+			fus->lfn = calloc(1, strlen("/tmp/") + strlen(mp->file_name) + 1);
+			strcpy(fus->lfn, "/tmp/");
+			strcpy(fus->lfn + strlen("/tmp/"), mp->file_name);
+
+			fus->fp = fopen(fus->lfn, "w");
+			if (fus->fp == NULL) {
+				mg_printf(con, "HTTP/1.1 500 Internal Server Error\r\n"
+								"Content-Type: text/plain\r\n"
+								"Connection: close\r\n\r\n");
+				mg_printf(con, "Failed to open %s: %d\n", fus->lfn, errno);
+				/* Do not close the connection just yet, discard remainder of the data.
+				* This is because at the time of writing some browsers (Chrome) fail to
+				* render response before all the data is sent. */
+			}
+			mp->user_data = (void *) fus;
+		}
+		break;
+	case MG_EV_HTTP_PART_DATA: {
+		struct mg_http_multipart_part *mp = (struct mg_http_multipart_part *)ev_data;
+		struct file_upload_state *fus = (struct file_upload_state *)mp->user_data;
+
+		if (!fus || !fus->fp) break;
+		if (fwrite(mp->data.p, 1, mp->data.len, fus->fp) != mp->data.len) {
+			if (errno == ENOSPC) {
+				mg_printf(con, "HTTP/1.1 413 Payload Too Large\r\n"
+								"Content-Type: text/plain\r\n"
+								"Connection: close\r\n\r\n");
+				mg_printf(con, "Failed to write to %s: no space left; wrote %d\r\n", fus->lfn, (int)fus->num_recd);
+			} else {
+				mg_printf(con, "HTTP/1.1 500 Internal Server Error\r\n"
+                   	 			"Content-Type: text/plain\r\n"
+                    			"Connection: close\r\n\r\n");
+          		mg_printf(con, "Failed to write to %s: %d, wrote %d", mp->file_name, errno, (int)fus->num_recd);
+			}
+			fclose(fus->fp);
+			remove(fus->lfn);
+			fus->fp = NULL;
+			/* Do not close the connection just yet, discard remainder of the data.
+			 * This is because at the time of writing some browsers (Chrome) fail to
+			 * render response before all the data is sent. */
+			return;
+		}
+		fus->num_recd += mp->data.len;
+		break;
+	}
+	case MG_EV_HTTP_PART_END: {
+		struct mg_http_multipart_part *mp = (struct mg_http_multipart_part *)ev_data;
+		struct file_upload_state *fus = (struct file_upload_state *)mp->user_data;
+
+		if (fus) {
+			if (fus->fp)
+				remove(fus->lfn);
+			free(fus->lfn);
+			free(fus);
+			mp->user_data = NULL;
+		}
+		break;
+	}
 	case MG_EV_CLOSE:
 		if (!con->listener)
 			lua_obj_del(L, lcon);
@@ -664,6 +749,28 @@ static int lua_mg_get_http_var(lua_State *L)
 	return 1;
 }
 
+static int lua_mg_get_http_partinfo(lua_State *L)
+{
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+	struct mg_http_multipart_part *mp = (struct mg_http_multipart_part *)lcon->ev_data;
+	struct file_upload_state *fus = (struct file_upload_state *)mp->user_data;
+	
+	lua_createtable(L, 0, 2);
+
+	lua_pushstring(L, mp->var_name);
+	lua_setfield(L, -2, "var_name");
+
+	lua_pushstring(L, mp->file_name);
+	lua_setfield(L, -2, "file_name");
+
+	if (fus && mp->status >= 0 && fus->fp) {
+		lua_pushstring(L, fus->lfn);
+		lua_setfield(L, -2, "lfn");
+	}
+	
+	return 1;
+}
+
 static int lua_mg_websocket_op(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
@@ -906,6 +1013,7 @@ static const luaL_Reg evmongoose_con_meta[] = {
 	{"headers", lua_mg_http_headers},
 	{"body", lua_mg_http_body},
 	{"get_http_var", lua_mg_get_http_var},
+	{"get_http_partinfo", lua_mg_get_http_partinfo},
 	{"websocket_op", lua_mg_websocket_op},
 	{"websocket_frame", lua_mg_websocket_frame},
 	{"send_websocket_frame", lua_mg_send_websocket_frame},

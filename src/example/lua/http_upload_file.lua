@@ -19,14 +19,28 @@ local function ev_handle(con, event)
 		con:send_http_head(200, #page, "Content-Type: text/html")
 		con:send(page)
 		return true
-	elseif event == evmg.MG_EV_HTTP_MULTIPART_REQUEST_END then
-		local fn = con:lfn()
-		print("Upload file:", fn)
+	elseif event == evmg.MG_EV_HTTP_PART_BEGIN then
+		local part = con:get_http_partinfo()
+		print("var_name:", part.var_name, "file_name:", part.file_name)
 
-		local file = io.open(fn, "r")
-		local data = file:read(5)
-		print(data)
-		file:close()
+		local file_name = part.file_name
+		if not file_name or #file_name == 0 or file_name:match("[^%w%-%._]+") then
+			con:send("HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\nConnection: close\r\n\r\nInvalid filename");
+
+			-- If the false is returned, it continues to be processed by the underlying layer, otherwise finish end processing
+			return true
+		end
+	elseif event == evmg.MG_EV_HTTP_PART_END then
+		local part = con:get_http_partinfo()
+		print("var_name:", part.var_name, "file_name:", part.file_name, "local file name:", part.lfn)
+
+		if not part.lfn then
+			print("Upload file failed")
+		else
+			-- Now you can handle the file at will
+			os.rename(part.lfn, "/tmp/test_" .. part.file_name)
+			os.remove("/tmp/test_" .. part.file_name)
+		end
 	end
 end
 
