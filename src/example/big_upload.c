@@ -47,6 +47,9 @@ static void handle_upload(struct mg_connection *nc, int ev, void *p)
 					return;
 				}
 				nc->user_data = (void *) data;
+
+				printf("file name:%s\n", mp->file_name);
+				printf("var name:%s\n", mp->var_name);
 			}
 			break;
 		}
@@ -66,9 +69,9 @@ static void handle_upload(struct mg_connection *nc, int ev, void *p)
 				"HTTP/1.1 200 OK\r\n"
 				"Content-Type: text/plain\r\n"
 				"Connection: close\r\n\r\n"
-				"Written %ld of POST data to a temp file\n\n",
-				(long) ftell(data->fp));
-			
+				"Upload %s(%ld) to to a temp file\n\n",
+				mp->file_name, ftell(data->fp));
+
 			nc->flags |= MG_F_SEND_AND_CLOSE;
 			fclose(data->fp);
 			free(data);
