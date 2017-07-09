@@ -84,6 +84,41 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
 	                SSl (mbedtls)  --->
 	
 	make package/evmongoose/compile V=s
+
+## 通用嵌入式环境
+### [首先交叉编译Lua](https://github.com/zhaojh329/lua-5.1.5-mod)
+
+### 交叉编译lib-ev
+	git clone https://github.com/kindy/libev.git
+	cd libev/src
+	sh ./autogen.sh
+	
+	# 配置交叉编译器执行环境
+	export PATH=/home/zjh/lede/staging_dir/toolchain-mipsel_24kc_gcc-5.4.0_musl/bin:$PATH
+	./configure --host=mipsel-openwrt-linux --prefix=`pwd`/obj
+	make && make install
+	
+### 交叉编译Lua-ev
+	git clone https://github.com/brimworks/lua-ev.git
+	cd lua-ev
+	
+	# 配置交叉编译器执行环境
+	export PATH=/home/zjh/lede/staging_dir/toolchain-mipsel_24kc_gcc-5.4.0_musl/bin:$PATH
+	
+	# 其中xxxxx代码你的交叉编译器的跟目录
+	cmake . -DCMAKE_C_COMPILER=mipsel-openwrt-linux-gcc -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=BOTH -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY -DCMAKE_FIND_ROOT_PATH=xxxxx
+	make
+	
+### 交叉编译evmongoose
+	git clone https://github.com/zhaojh329/evmongoose.git
+    cd evmongoose
+	
+	# 配置交叉编译器执行环境
+	export PATH=/home/zjh/lede/staging_dir/toolchain-mipsel_24kc_gcc-5.4.0_musl/bin:$PATH
+	
+	# 其中xxxxx代码你的交叉编译器的跟目录
+	cmake . -DCMAKE_C_COMPILER=mipsel-openwrt-linux-gcc -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=BOTH -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY -DCMAKE_FIND_ROOT_PATH=xxxxx
+	make
 	
 # C API参考手册
 Evmongoose并没有改变mongoose和libev的API用法，所以请参考

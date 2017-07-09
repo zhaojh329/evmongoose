@@ -86,6 +86,35 @@ could not add my own objects. For example, I want to monitor a signal or a file 
 	                SSl (mbedtls)  --->
 	
 	make package/evmongoose/compile V=s
+
+## For General embedded environment
+### [First, cross compile Lua](https://github.com/zhaojh329/lua-5.1.5-mod)
+
+### Cross compile lib-ev
+	git clone https://github.com/kindy/libev.git
+	cd libev/src
+	sh ./autogen.sh
+	export PATH=/home/zjh/lede/staging_dir/toolchain-mipsel_24kc_gcc-5.4.0_musl/bin:$PATH
+	./configure --host=mipsel-openwrt-linux --prefix=`pwd`/obj
+	make && make install
+	
+### Cross compile Lua-ev
+	git clone https://github.com/brimworks/lua-ev.git
+	cd lua-ev
+	export PATH=/home/zjh/lede/staging_dir/toolchain-mipsel_24kc_gcc-5.4.0_musl/bin:$PATH
+	
+	# xxxxx is your cross compiler with directories
+	cmake . -DCMAKE_C_COMPILER=mipsel-openwrt-linux-gcc -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=BOTH -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY -DCMAKE_FIND_ROOT_PATH=xxxxx
+	make
+	
+### Cross compile evmongoose
+	git clone https://github.com/zhaojh329/evmongoose.git
+    cd evmongoose
+	export PATH=/home/zjh/lede/staging_dir/toolchain-mipsel_24kc_gcc-5.4.0_musl/bin:$PATH
+	
+	# xxxxx is your cross compiler with directories
+	cmake . -DCMAKE_C_COMPILER=mipsel-openwrt-linux-gcc -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=BOTH -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY -DCMAKE_FIND_ROOT_PATH=xxxxx
+	make
 	
 # C API reference manual
 Evmongoose dose not change the usage of API in mongoose and libev, 
