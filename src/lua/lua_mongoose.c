@@ -31,7 +31,6 @@ struct lua_mg_connection {
 	struct mg_connection *con;
 	struct mg_connection *con2;	/* Store Accepted con */
 	struct mg_serve_http_opts http_opts;
-	char *lfn;	/* Local file name of upload file */
 	void *ev_data;
 	unsigned flags;
 };
@@ -147,15 +146,11 @@ static void lua_obj_del(lua_State* L, void *obj)
 	lua_rawset(L, -3);
 }
 
-static struct mg_str http_upload_fname(struct mg_connection *con, struct mg_str fname)
-{	
-	return fname;
-}
-
 static void lua_mg_ev_handler(struct mg_connection *con, int ev, void *ev_data)
 {
 	lua_State *L = (lua_State *)con->mgr->user_data;
 	struct lua_mg_connection *lcon;
+	int ret;
 	
 	if (con->listener) {
 		lcon = (struct lua_mg_connection *)con->listener->user_data;
@@ -163,21 +158,6 @@ static void lua_mg_ev_handler(struct mg_connection *con, int ev, void *ev_data)
 	} else {
 		lcon = (struct lua_mg_connection *)con->user_data;
 		lcon->con2 = NULL;
-	}
-	
-	if (ev == MG_EV_HTTP_PART_BEGIN || ev == MG_EV_HTTP_PART_DATA || ev == MG_EV_HTTP_PART_END) {
-		if (ev == MG_EV_HTTP_PART_END) {
-			struct mg_http_multipart_part *mp = (struct mg_http_multipart_part *)ev_data;
-			struct file_upload_state *fus = (struct file_upload_state *)mp->user_data;
-
-			if (fus == NULL)
-				return;
-
-			if (mp->status >= 0 && fus->fp)
-				lcon->lfn = strdup(fus->lfn);
-		}
-		mg_file_upload_handler(con, ev, ev_data, http_upload_fname);
-		return;
 	}
 	
 	lcon->ev_data = ev_data;
@@ -201,19 +181,22 @@ static void lua_mg_ev_handler(struct mg_connection *con, int ev, void *ev_data)
 	if (lua_pcall(L, 2, 1, -5) ) {
 		/* TODO: Enable user-specified error handler! */
 		fprintf(stderr, "CALLBACK FAILED: %s\n", lua_tostring(L, -1));
-	} else {
-		if (ev == MG_EV_HTTP_REQUEST && (lcon->flags & EVMG_F_LISTENING) && !lua_toboolean(L, -1))
-			mg_serve_http(con, ev_data, lcon->http_opts);		/* Serve static content */
-	}
-	
-	if (ev == MG_EV_HTTP_MULTIPART_REQUEST_END && lcon->lfn) {
-		unlink(lcon->lfn);
-		free(lcon->lfn);
-		lcon->lfn = NULL;
+		return;
 	}
 
-	if (ev == MG_EV_CLOSE && !con->listener)
-		lua_obj_del(L, lcon);
+	ret = lua_toboolean(L, -1);
+	
+	switch (ev) {
+	case MG_EV_HTTP_REQUEST:
+		if (lcon->flags & EVMG_F_LISTENING && !ret)
+			mg_serve_http(con, ev_data, lcon->http_opts);		/* Serve static content */
+		break;
+		
+	case MG_EV_CLOSE:
+		if (!con->listener)
+			lua_obj_del(L, lcon);
+		break;
+	}		
 
 	lua_settop(L, 0);
 }
@@ -681,14 +664,6 @@ static int lua_mg_get_http_var(lua_State *L)
 	return 1;
 }
 
-static int lua_mg_get_http_lfn(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	
-	lua_pushstring(L, lcon->lfn);
-	return 1;
-}
-
 static int lua_mg_websocket_op(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
@@ -931,7 +906,6 @@ static const luaL_Reg evmongoose_con_meta[] = {
 	{"headers", lua_mg_http_headers},
 	{"body", lua_mg_http_body},
 	{"get_http_var", lua_mg_get_http_var},
-	{"lfn", lua_mg_get_http_lfn},
 	{"websocket_op", lua_mg_websocket_op},
 	{"websocket_frame", lua_mg_websocket_frame},
 	{"send_websocket_frame", lua_mg_send_websocket_frame},
@@ -1004,6 +978,11 @@ int luaopen_evmongoose(lua_State *L)
 	EVMG_LUA_SETCONST(MG_EV_HTTP_REQUEST);
 	EVMG_LUA_SETCONST(MG_EV_HTTP_REPLY);
 	EVMG_LUA_SETCONST(MG_EV_HTTP_CHUNK);
+
+	EVMG_LUA_SETCONST(MG_EV_HTTP_MULTIPART_REQUEST);
+	EVMG_LUA_SETCONST(MG_EV_HTTP_PART_BEGIN);
+	EVMG_LUA_SETCONST(MG_EV_HTTP_PART_DATA);
+	EVMG_LUA_SETCONST(MG_EV_HTTP_PART_END);
 	EVMG_LUA_SETCONST(MG_EV_HTTP_MULTIPART_REQUEST_END);
 
 	EVMG_LUA_SETCONST(WEBSOCKET_OP_CONTINUE);
