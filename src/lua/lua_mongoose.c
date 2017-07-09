@@ -110,29 +110,29 @@ static int obj_count(lua_State *L) {
     return 1;
 }
 
-static void *lua_obj_new(lua_State* L, size_t size, const char *tname)
-{
-    void *obj;
-
-	luaL_checkudata(L, 1, EVMONGOOSE_MT);
-	luaL_checktype(L, 2, LUA_TFUNCTION);
-	
-	obj = lua_newuserdata(L, size);
-	luaL_getmetatable(L, tname);
-	lua_setmetatable(L, -2);
-
-	lua_createtable(L, 1, 0);
-	lua_pushvalue(L, 2);
-    lua_rawseti(L, -2, 1);
-	lua_setfenv(L, -2);
-
+static void lua_obj_registry(lua_State* L, void *obj)
+{	
 	lua_pushlightuserdata(L, &obj_registry);
     lua_rawget(L, LUA_REGISTRYINDEX);
 
 	lua_pushlightuserdata(L, obj);
     lua_pushvalue(L, -3);
     lua_rawset(L, -3);
-	
+}
+
+static void lua_con_obj_init(lua_State* L, void *obj)
+{
+	lua_createtable(L, 1, 0);
+	lua_pushvalue(L, 2);
+    lua_rawseti(L, -2, 1);
+	lua_setfenv(L, -2);
+}
+
+static void *lua_obj_new(lua_State* L, size_t size, const char *tname)
+{	
+	void *obj = lua_newuserdata(L, size);
+	luaL_getmetatable(L, tname);
+	lua_setmetatable(L, -2);
     return obj;
 }
 
@@ -297,6 +297,8 @@ static int lua_mg_connect(lua_State *L)
 	
 	lcon = (struct lua_mg_connection *)lua_obj_new(L, sizeof(struct lua_mg_connection), EVMONGOOSE_CON_MT);
 	lcon->mgr = luaL_checkudata(L, 1, EVMONGOOSE_MT);
+	lua_con_obj_init(L, lcon);
+	lua_obj_registry(L, lcon);
 
 	memset(&opts, 0, sizeof(opts));
 	opts.error_string = &err;
@@ -340,6 +342,8 @@ static int lua_mg_connect_http(lua_State *L)
 	
 	lcon = (struct lua_mg_connection *)lua_obj_new(L, sizeof(struct lua_mg_connection), EVMONGOOSE_CON_MT);
 	lcon->mgr = luaL_checkudata(L, 1, EVMONGOOSE_MT);
+	lua_con_obj_init(L, lcon);
+	lua_obj_registry(L, lcon);
 	
 	memset(&opts, 0, sizeof(opts));
 	opts.error_string = &err;
@@ -388,6 +392,8 @@ static int lua_mg_listen(lua_State *L)
 	
 	lcon = (struct lua_mg_connection *)lua_obj_new(L, sizeof(struct lua_mg_connection), EVMONGOOSE_CON_MT);
 	lcon->mgr = luaL_checkudata(L, 1, EVMONGOOSE_MT);
+	lua_con_obj_init(L, lcon);
+	lua_obj_registry(L, lcon);
 
 	memset(&opts, 0, sizeof(opts));
 	opts.error_string = &err;
@@ -517,6 +523,9 @@ static int lua_mg_resolve_async(lua_State *L)
 	struct mg_resolve_async_opts opts;
 	
 	dns =(struct lua_mg_dns_ctx *)lua_obj_new(L, sizeof(struct lua_mg_dns_ctx), EVMONGOOSE_DNS_MT);
+	lua_con_obj_init(L, dns);
+	lua_obj_registry(L, dns);
+	
 	dns->domain = domain;
 	dns->L = L;
 	
@@ -535,6 +544,20 @@ static int lua_mg_resolve_async(lua_State *L)
 }
 
 /**************************** meta function of mg_connection ********************************/
+static int lua_get_mgr(lua_State *L)
+{
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+	struct mg_mgr *mgr = lcon->mgr;
+
+	lua_pushlightuserdata(L, &obj_registry);
+	lua_rawget(L, LUA_REGISTRYINDEX);
+
+	lua_pushlightuserdata(L, mgr);
+	lua_rawget(L, -2);
+
+	return 1;
+}
+
 static int lua_mg_set_flags(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
@@ -961,11 +984,10 @@ static int lua_mg_mqtt_publish(lua_State *L)
 static int lua_mg_mgr_init(lua_State *L)
 {
 	struct ev_loop *loop = NULL;
-	struct mg_mgr *mgr = lua_newuserdata(L, sizeof(struct mg_mgr));
+	struct mg_mgr *mgr = lua_obj_new(L, sizeof(struct mg_mgr), EVMONGOOSE_MT);
+	lua_obj_registry(L, mgr);
+	lua_pop(L, 1);
 
-	luaL_getmetatable(L, EVMONGOOSE_MT);
-	lua_setmetatable(L, -2);
-	
 	if (lua_gettop(L) > 1) {
 		struct ev_loop **tmp = luaL_checkudata(L, 1, LOOP_MT);
 		if (*tmp != UNINITIALIZED_DEFAULT_LOOP)
@@ -979,6 +1001,7 @@ static int lua_mg_mgr_init(lua_State *L)
 static int lua_mg_mgr_free(lua_State *L)
 {
 	struct mg_mgr *mgr = luaL_checkudata(L, 1, EVMONGOOSE_MT);
+	lua_obj_del(L, mgr);
 	mg_mgr_free(mgr);
 	return 0;
 }
@@ -1031,6 +1054,7 @@ static int lua_mg_time(lua_State *L)
 }
 
 static const luaL_Reg evmongoose_con_meta[] = {
+	{"get_mgr", lua_get_mgr},
 	{"set_flags", lua_mg_set_flags},
 	{"connected", lua_mg_connected},
 	{"recv", lua_mg_recv},
