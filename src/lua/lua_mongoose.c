@@ -22,7 +22,7 @@
 #define EVMONGOOSE_CON_MT "evmongoose{con}"
 #define EVMONGOOSE_DNS_MT "evmongoose{dns}"
 
-#define EVMG_F_LISTENING	(1 << 0)
+#define EVMG_F_IS_MQTT		(1 << 0)
 
 static char *obj_registry = "evmongoose{obj}";
 
@@ -209,7 +209,7 @@ static void lua_mg_ev_handler(struct mg_connection *con, int ev, void *ev_data)
 	
 	switch (ev) {
 	case MG_EV_HTTP_REQUEST:
-		if (lcon->flags & EVMG_F_LISTENING && !ret)
+		if (con->listener && !ret)
 			mg_serve_http(con, ev_data, lcon->http_opts);		/* Serve static content */
 		break;
 
@@ -432,10 +432,8 @@ static int lua_mg_listen(lua_State *L)
 	con->user_data = lcon;
 	lcon->con = con;
 
-	if (proto && !strcmp(proto, "http")) {
-		lcon->flags |= EVMG_F_LISTENING;
+	if (proto && !strcmp(proto, "http"))
 		mg_set_protocol_http_websocket(con);
-	}
 
 	lua_settop(L, 5);
 	
@@ -782,6 +780,18 @@ static int lua_mg_get_http_partinfo(lua_State *L)
 	return 1;
 }
 
+static int lua_mg_is_websocket(lua_State *L)
+{
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
+
+	if (con->flags & MG_F_IS_WEBSOCKET)
+		lua_pushboolean(L, 1);
+	else
+		lua_pushboolean(L, 0);
+	return 1;
+}
+
 static int lua_mg_websocket_op(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
@@ -825,6 +835,19 @@ static int lua_mg_send_websocket_frame(lua_State *L)
 	mg_send_websocket_frame(con, op, buf, len);
 	return 0;
 }
+
+
+static int lua_mg_is_mqtt(lua_State *L)
+{
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+
+	if (lcon->flags & EVMG_F_IS_MQTT)
+		lua_pushboolean(L, 1);
+	else
+		lua_pushboolean(L, 0);
+	return 1;
+}
+
 static int lua_mg_mqtt_handshake(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
@@ -857,6 +880,8 @@ static int lua_mg_mqtt_handshake(lua_State *L)
 	
 	mg_set_protocol_mqtt(con);
 	mg_send_mqtt_handshake_opt(con, client_id, opts);
+
+	lcon->flags |= EVMG_F_IS_MQTT;
 
 	return 0;
 }
@@ -1026,9 +1051,11 @@ static const luaL_Reg evmongoose_con_meta[] = {
 	{"body", lua_mg_http_body},
 	{"get_http_var", lua_mg_get_http_var},
 	{"get_http_partinfo", lua_mg_get_http_partinfo},
+	{"is_websocket", lua_mg_is_websocket},
 	{"websocket_op", lua_mg_websocket_op},
 	{"websocket_frame", lua_mg_websocket_frame},
 	{"send_websocket_frame", lua_mg_send_websocket_frame},
+	{"is_mqtt", lua_mg_is_mqtt},
 	{"mqtt_handshake", lua_mg_mqtt_handshake},
 	{"mqtt_conack", lua_mg_mqtt_conack},
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
