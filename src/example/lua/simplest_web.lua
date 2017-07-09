@@ -1,6 +1,7 @@
 #!/usr/bin/lua
 
 local ev = require("ev")
+local lz = require("zlib")
 local evmg = require("evmongoose")
 local loop = ev.Loop.default
 
