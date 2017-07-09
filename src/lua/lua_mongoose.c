@@ -628,6 +628,17 @@ static int lua_mg_send_http_redirect(lua_State *L)
 	return 0;
 }
 
+static int lua_mg_send_http_error(lua_State *L)
+{
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
+	int code = luaL_checkinteger(L, 2);
+	const char *reason = lua_tostring(L, 3);
+	
+	mg_http_send_error(con, code, reason);
+	return 0;
+}
+
 static int lua_mg_http_reverse_proxy(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
@@ -1002,6 +1013,7 @@ static const luaL_Reg evmongoose_con_meta[] = {
 	{"send_http_chunk", lua_mg_send_http_chunk},
 	{"send_http_head", lua_mg_send_http_head},
 	{"send_http_redirect", lua_mg_send_http_redirect},
+	{"send_http_error", lua_mg_send_http_error},
 	{"http_reverse_proxy", lua_mg_http_reverse_proxy},
 	{"resp_code", lua_mg_resp_code},
 	{"resp_status_msg", lua_mg_resp_status_msg},
