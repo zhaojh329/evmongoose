@@ -316,16 +316,19 @@ static int lua_mg_connect(lua_State *L)
 		
 		lua_getfield(L, 4, "ssl_cipher_suites");
 		opts.ssl_cipher_suites = lua_tostring(L, -1);
+
+		lua_pop(L, 4);
 #endif
 	}
+
+	lua_pop(L, 1);
+	
 	con = mg_connect_opt(lcon->mgr, address, lua_mg_ev_handler, opts);
 	if (!con)
 		return luaL_error(L, "%s", err);
 	
 	con->user_data = lcon;
 	lcon->con = con;
-
-	lua_settop(L, 5);
 	
 	return 1;
 }
@@ -415,10 +418,14 @@ static int lua_mg_listen(lua_State *L)
 		
 		lua_getfield(L, 4, "ssl_cipher_suites");
 		opts.ssl_cipher_suites = lua_tostring(L, -1);
+
+		lua_pop(L, 4);
 #endif
 		lua_getfield(L, 4, "proto");
 		proto = lua_tostring(L, -1);
 
+		lua_pop(L, 1);
+		
 		if (proto && !strcmp(proto, "http")) {
 			lua_getfield(L, 4, "document_root");
 			lcon->http_opts.document_root = lua_tostring(L, -1);
@@ -432,9 +439,13 @@ static int lua_mg_listen(lua_State *L)
 				
 			lua_getfield(L, 4, "url_rewrites");
 			lcon->http_opts.url_rewrites = lua_tostring(L, -1);
+
+			lua_pop(L, 4);
 		}
 	}
 
+	lua_pop(L, 1);
+	
 	con = mg_bind_opt(lcon->mgr, address, lua_mg_ev_handler, opts);
 	if (!con)
 		return luaL_error(L, "%s", err);
@@ -444,8 +455,6 @@ static int lua_mg_listen(lua_State *L)
 
 	if (proto && !strcmp(proto, "http"))
 		mg_set_protocol_http_websocket(con);
-
-	lua_settop(L, 5);
 	
 	return 1;
 }
