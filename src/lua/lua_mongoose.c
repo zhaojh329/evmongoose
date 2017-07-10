@@ -361,13 +361,19 @@ static int lua_mg_connect_http(lua_State *L)
 		
 		lua_getfield(L, 4, "ssl_cipher_suites");
 		opts.ssl_cipher_suites = lua_tostring(L, -1);
+
+		lua_pop(L, 4);
 #endif
 		lua_getfield(L, 4, "extra_headers");
 		extra_headers = lua_tostring(L, -1);
 
 		lua_getfield(L, 4, "post_data");
 		post_data = lua_tostring(L, -1);
+
+		lua_pop(L, 2);
 	}
+	
+	lua_pop(L, 1);
 	
 	con = mg_connect_http_opt(lcon->mgr, lua_mg_ev_handler, opts, url, extra_headers, post_data);
 	if (!con)
@@ -375,8 +381,6 @@ static int lua_mg_connect_http(lua_State *L)
 
 	con->user_data = lcon;
 	lcon->con = con;
-
-	lua_settop(L, 5);
 	
 	return 1;
 }
