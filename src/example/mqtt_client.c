@@ -6,6 +6,10 @@ static const char *s_password = NULL;
 static const char *s_topic = "/stuff";
 static struct mg_mqtt_topic_expression s_topic_expr = {NULL, 0};
 
+static int keep_alive = 3;
+ev_timer reconnect_timer;
+ev_timer keepalive_timer;
+
 static void ev_handler(struct mg_connection *nc, int ev, void *data)
 {
 	struct mg_mqtt_message *msg = (struct mg_mqtt_message *)data;
@@ -30,6 +34,8 @@ static void ev_handler(struct mg_connection *nc, int ev, void *data)
 			s_topic_expr.topic = s_topic;
 			printf("Subscribing to '%s'\n", s_topic);
 			mg_mqtt_subscribe(nc, &s_topic_expr, 1, 42);
+
+			ev_timer_start(nc->mgr->loop, &keepalive_timer);
 			break;
 
 		case MG_EV_MQTT_PUBACK:
@@ -55,9 +61,16 @@ static void ev_handler(struct mg_connection *nc, int ev, void *data)
 			msg->payload.len);
 			break;
 		}
+		case MG_EV_POLL:
+			if (keep_alive == 0) {
+				nc->flags |= MG_F_CLOSE_IMMEDIATELY;
+				keep_alive = 3;
+			}
+			break;
 		case MG_EV_CLOSE:
-	      printf("Connection closed\n");
-	      exit(1);
+			printf("Connection closed\n");
+			ev_timer_start(nc->mgr->loop, &reconnect_timer);
+		break;
 	}
 }
 
@@ -67,16 +80,25 @@ static void signal_cb(struct ev_loop *loop, ev_signal *w, int revents)
 	ev_break(loop, EVBREAK_ALL);
 }
 
-static void mqtt_ping_cb(struct ev_loop *loop, ev_timer *w, int revents)
+static void reconnect_cb(struct ev_loop *loop, ev_timer *w, int revents)
 {
-	mg_mqtt_ping((struct mg_connection *)w->data);
+	struct mg_mgr *mgr = (struct mg_mgr *)w->data;
+	mg_connect(mgr, s_address, ev_handler);
+
+	printf("Try Reconnect to %s\n", s_address);
+}
+
+static void keepalive_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	keep_alive = keep_alive - 1;
+	if (keep_alive == 0)
+		ev_timer_stop(loop, w);
 }
 
 int main(int argc, char *argv[])
 {
 	struct ev_loop *loop = EV_DEFAULT;
 	ev_signal sig_watcher;
-	ev_timer ping_timer;
 	struct mg_mgr mgr;
 	struct mg_connection *nc;
 	int i;
@@ -104,9 +126,10 @@ int main(int argc, char *argv[])
 		goto err;
 	}
 
-	ev_timer_init(&ping_timer, mqtt_ping_cb, 10, 10);
-	ping_timer.data = nc;
-	ev_timer_start(loop, &ping_timer);
+	ev_timer_init(&reconnect_timer, reconnect_cb, 5, 0);
+	reconnect_timer.data = &mgr;
+
+	ev_timer_init(&keepalive_timer, keepalive_cb, 10, 10);
 	
 	ev_run(loop, 0);
 
