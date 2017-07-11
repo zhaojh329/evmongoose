@@ -6,12 +6,14 @@ local long_options = {
 	{"host", true, "h"},
 	{"port", true, "p"},
 	{"help", false, "0"},
+	{"conf", true, "0"},
 	{"verbose", false, "0"}
 }
 
 local function usage(pro)
 	print(pro, "[option]")
 	print([[
+	--conf             config file
 	-h,--host          host to connect to
 	-p, --port         Port to connect to
 	-d                 Turn on debug
@@ -22,7 +24,7 @@ local function usage(pro)
 	os.exit();
 end
 
-for opt, optarg, longindex in evmg.getopt(arg, "h:p:d") do
+for opt, optarg, longindex in evmg.getopt(arg, "h:p:d", long_options) do
 	if opt == "h" then
 		print("host:", optarg)
 	elseif opt == "p" then
@@ -33,6 +35,8 @@ for opt, optarg, longindex in evmg.getopt(arg, "h:p:d") do
 		local name = long_options[longindex][1]			
 		if name == "verbose" then
 			print("verbose: on")
+		elseif name == "conf" then
+			print("conf:", optarg)
 		end
 	else
 		usage(arg[0])
