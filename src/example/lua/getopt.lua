@@ -2,13 +2,39 @@
 
 local evmg = require("evmongoose")
 
-local longopts = {
-	{"host", true, "h"},	-- required_argument
-	{"port", true, "p"},	-- required_argument
-	{"help", false, 0},		-- no_argument
+local long_options = {
+	{"host", true, "h"},
+	{"port", true, "p"},
+	{"help", false, "0"},
+	{"verbose", false, "0"}
 }
 
-print("option", "optarg", "long-option")
-for o, optarg, lo in evmg.getopt(arg, "h:p:dt:", longopts) do
-	print(o, optarg, lo)
+local function usage(pro)
+	print(pro, "[option]")
+	print([[
+	-h,--host          host to connect to
+	-p, --port         Port to connect to
+	-d                 Turn on debug
+	--help             show help
+	--verbose          Make the operation more talkative
+	]])
+	
+	os.exit();
+end
+
+for opt, optarg, longindex in evmg.getopt(arg, "h:p:d") do
+	if opt == "h" then
+		print("host:", optarg)
+	elseif opt == "p" then
+		print("port:", optarg)
+	elseif opt == "d" then
+		print("debug: on")
+	elseif opt == "0" then
+		local name = long_options[longindex][1]			
+		if name == "verbose" then
+			print("verbose: on")
+		end
+	else
+		usage(arg[0])
+	end
 end

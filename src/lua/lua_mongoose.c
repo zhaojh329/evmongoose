@@ -13,6 +13,7 @@
  */
 
 #include <pty.h>
+#include <getopt.h>
 #include "lua_mongoose.h"
 #include "mongoose.h"
 
@@ -1074,6 +1075,87 @@ static int lua_mg_time(lua_State *L)
 	return 1;
 }
 
+static int lua_mg_getopt_iter(lua_State *L)
+{
+	int opt, longindex;
+	const char *optstring = luaL_checkstring(L, lua_upvalueindex(1));
+	int argc = lua_tointeger(L, lua_upvalueindex(2));
+	char **argv = (char **)lua_touserdata(L, lua_upvalueindex(3));
+	struct option *longopts = (struct option *)lua_touserdata(L, lua_upvalueindex(4));;
+	
+	opt = getopt_long(argc, argv, optstring, longopts, &longindex);
+	if (opt == -1)
+		return 0;
+	
+	lua_pushlstring(L, (char *)&opt, 1);
+	lua_pushstring(L, optarg);
+	lua_pushinteger(L, longindex + 1);
+	
+	return 3;
+}
+
+static int lua_mg_getopt(lua_State *L)
+{
+	int i, argc, n = 0;
+	char **argv;
+	struct option *longopts;
+
+	luaL_checkstring(L, 2);
+	luaL_checktype(L, 1, LUA_TTABLE);
+
+	argc = lua_objlen(L, 1) + 1;
+	lua_pushinteger(L, argc);
+	
+	argv = lua_newuserdata(L, argc * sizeof(char *));
+	
+	for (i = 0; i < argc; i++) {
+		lua_rawgeti(L, 1, i);
+		argv[i] = (char *)luaL_checkstring(L, -1);
+		lua_pop(L, 1);
+	}
+
+	if (lua_type(L, 3) == LUA_TTABLE)
+		n = lua_objlen(L, 3);
+
+	longopts = lua_newuserdata(L, (n + 1) * sizeof(struct option));
+	
+	longopts[n].name = NULL;
+	longopts[n].has_arg = 0;
+	longopts[n].flag = NULL;
+	longopts[n].val = 0;
+
+	for (i = 1; i <= n; i++) {
+		const char *name, *val;
+		int has_arg;
+		
+		lua_rawgeti(L, 3, i);
+		luaL_checktype(L, -1, LUA_TTABLE);
+
+		lua_rawgeti(L, -1, 1);
+		name = luaL_checkstring(L, -1);
+		lua_pop(L, 1);
+		
+		lua_rawgeti(L, -1, 2);
+		has_arg = lua_toboolean(L, -1);
+		lua_pop(L, 1);
+		
+		lua_rawgeti(L, -1, 3);
+		val = luaL_checkstring(L, -1);
+		lua_pop(L, 2);
+		
+		longopts[i - 1].name = name;
+		longopts[i - 1].has_arg = has_arg;
+		longopts[i - 1].flag = NULL;
+		longopts[i - 1].val = val[0];
+	}
+
+	if (lua_type(L, 3) == LUA_TTABLE)
+		lua_remove(L, 3);
+
+	lua_pushcclosure(L, lua_mg_getopt_iter, 4);
+	return 1;
+}
+
 static const luaL_Reg evmongoose_con_meta[] = {
 	{"get_mgr", lua_get_mgr},
 	{"set_flags", lua_mg_set_flags},
@@ -1128,6 +1210,7 @@ static const luaL_Reg evmongoose_fun[] = {
 	{"init", lua_mg_mgr_init},
 	{"forkpty", lua_forkpty},
 	{"mg_time", lua_mg_time},
+	{"getopt", lua_mg_getopt},
 	{NULL, NULL}
 };
 
