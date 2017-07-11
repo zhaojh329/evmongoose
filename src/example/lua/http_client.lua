@@ -40,12 +40,13 @@ local mgr = evmg.init(loop)
 
 -- Supported opt:
 -- extra_headers	Such as "Accept-Encoding: gzip\r\n"
+-- post_data
 -- ssl_cert
 -- ssl_key
 -- ssl_ca_cert
 -- ssl_cipher_suites
 local opt  = {}
-mgr:connect_http(ev_handle, "http://www.baidu.com", opt)
+mgr:connect_http(ev_handle, "http://192.168.83.1:8000", opt)
 
 ev.Signal.new(function(loop, sig, revents)
 	loop:unloop()
