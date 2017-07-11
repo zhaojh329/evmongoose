@@ -337,7 +337,7 @@ static int lua_mg_connect_http(lua_State *L)
 {	
 	struct mg_connection *con;
 	struct lua_mg_connection *lcon;
-	const char *url = lua_tostring(L, 3);
+	const char *url = luaL_checkstring(L, 3);
 	struct mg_connect_opts opts;
 	const char *extra_headers = NULL;
 	const char *post_data = NULL;
