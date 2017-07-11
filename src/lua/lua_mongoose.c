@@ -613,6 +613,14 @@ static int lua_mg_recv(lua_State *L)
 	return 1;
 }
 
+static int lua_mg_sent_size(lua_State *L)
+{
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+
+	lua_pushinteger(L, *(int *)lcon->ev_data);
+	return 1;
+}
+
 static int lua_mg_send(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
@@ -1071,7 +1079,8 @@ static const luaL_Reg evmongoose_con_meta[] = {
 	{"set_flags", lua_mg_set_flags},
 	{"connected", lua_mg_connected},
 	{"recv", lua_mg_recv},
-	{"send", lua_mg_send},
+	{"sent_size", lua_mg_sent_size},
+	{"sended", lua_mg_send},
 	{"send_http_chunk", lua_mg_send_http_chunk},
 	{"send_http_head", lua_mg_send_http_head},
 	{"send_http_redirect", lua_mg_send_http_redirect},
