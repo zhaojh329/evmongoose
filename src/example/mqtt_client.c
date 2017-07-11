@@ -61,6 +61,12 @@ static void ev_handler(struct mg_connection *nc, int ev, void *data)
 			msg->payload.len);
 			break;
 		}
+
+		case MG_EV_MQTT_PINGRESP:
+			printf("Recv PingResp\n");
+			keep_alive = 3;
+			break;
+		
 		case MG_EV_POLL:
 			if (keep_alive == 0) {
 				nc->flags |= MG_F_CLOSE_IMMEDIATELY;
