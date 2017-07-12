@@ -1,10 +1,3 @@
-cmake_minimum_required (VERSION 2.6)
-
-project(evmongoose C)
-
-#set(CMAKE_VERBOSE_MAKEFILE ON)
-
-add_definitions(-O -Wall -Werror --std=gnu99 -DMG_ENABLE_HTTP_STREAMING_MULTIPART -g3)
 
 include_directories(${CMAKE_SOURCE_DIR})
 
@@ -41,7 +34,7 @@ if (HTTPS_SUPPORT)
 	endif (USE_MBEDTLS AND NOT LIBMBEDTLS)
 	
 	add_definitions(-DMG_ENABLE_SSL)
-
+	
 	if (USE_MBEDTLS)
 		add_definitions(-DMG_SSL_IF=MG_SSL_IF_MBEDTLS -DMG_SSL_MBED_DUMMY_RANDOM)
 		target_link_libraries(evmongoose mbedcrypto mbedtls mbedx509)
@@ -51,7 +44,6 @@ if (HTTPS_SUPPORT)
 endif (HTTPS_SUPPORT)
 
 add_subdirectory(lua)
-add_subdirectory(example)
 
 install(FILES mongoose.h
 	DESTINATION include
