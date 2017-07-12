@@ -4,6 +4,7 @@ local ev = require("ev")
 local evmg = require("evmongoose")
 local lz = require "zlib"
 local loop = ev.Loop.default
+local url = arg[1] or "http://192.168.83.1:8000"
 
 local function ev_handle(con, event)
 	if event == evmg.MG_EV_CONNECT then
@@ -45,8 +46,8 @@ local mgr = evmg.init(loop)
 -- ssl_key
 -- ssl_ca_cert
 -- ssl_cipher_suites
-local opt  = {}
-mgr:connect_http(ev_handle, "http://192.168.83.1:8000", opt)
+local opt  = {extra_headers = "User-Agent:Evmongoose\r\n"}
+mgr:connect_http(ev_handle, url, opt)
 
 ev.Signal.new(function(loop, sig, revents)
 	loop:unloop()
