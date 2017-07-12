@@ -231,18 +231,22 @@ static int lua_run_exec(lua_State *L, int use_shell)
 	const char *path = luaL_checkstring(L, 1);
 	int i, n, ret;
 
-	luaL_checktype(L, 2, LUA_TTABLE);
+	n = 0;
+	
+	if (lua_type(L, 2) == LUA_TTABLE)
+		n = lua_objlen(L, 2);
+	
+	argv = lua_newuserdata(L, (n + 2) * sizeof(char*));
 
-	n = lua_objlen(L, 2);
-	argv = lua_newuserdata(L, (n + 1) * sizeof(char*));
+	argv[0] = (char *)path;
 
 	/* Read argv from table. */
-	for (i = 0; i < n; i++) {
-		lua_rawgeti(L, 2, i + 1);
+	for (i = 1; i <= n; i++) {
+		lua_rawgeti(L, 2, i);
 		argv[i] = (char *)lua_tostring(L, -1);
 		lua_pop(L, 1);
 	}
-	argv[n] = NULL;
+	argv[n + 1] = NULL;
 
 	if (use_shell)
 		ret = execvp(path, argv);

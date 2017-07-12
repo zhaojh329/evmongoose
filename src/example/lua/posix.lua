@@ -27,10 +27,10 @@ posix.write(1, "You Inputed:" .. input)
 
 local pid = posix.fork()
 if pid == 0 then
-	posix.exec("/bin/ls", {"ls"})
+	posix.exec("/bin/ls", {"/tmp"})
 	
 	-- Use shell
-	--posix.execp("/bin/ls", {"ls"})
+	--posix.execp("/bin/ls", {"/tmp"})
 else
 	print("In parent")
 	os.execute("sleep 1")
