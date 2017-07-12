@@ -7,5 +7,7 @@ project(evmongoose C)
 add_definitions(-O -Wall -Werror --std=gnu99 -g3)
 add_definitions(-DMG_ENABLE_HTTP_STREAMING_MULTIPART)
 
+include_directories(${CMAKE_SOURCE_DIR}/src)
+
 add_subdirectory(src)
 add_subdirectory(example)

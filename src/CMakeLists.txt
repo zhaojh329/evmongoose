@@ -1,6 +1,3 @@
-
-include_directories(${CMAKE_SOURCE_DIR})
-
 find_library(LIBEV_LIBRARY NAMES ev)
 find_path(LIBEV_INCLUDE_DIR ev.h PATH_SUFFIXES include)
 include(FindPackageHandleStandardArgs)
