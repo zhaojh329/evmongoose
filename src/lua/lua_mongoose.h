@@ -23,6 +23,6 @@
 		lua_setfield(L, -2, #v); \
 	}
 
-int luaopen_evmongoose_syslog(lua_State *L);
+int luaopen_evmongoose_posix(lua_State *L);
 
 #endif

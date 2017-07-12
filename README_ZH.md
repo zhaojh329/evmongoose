@@ -14,7 +14,7 @@ Evmongoose支持高度的可定制化来扩展你的应用程序。在开始这�
 * 新特性
     - 使用libev编程
 	- 高度的可定制化
-	- Lua API（依赖lua-ev）
+	- Lua API（除了对evmongoose的Lua封装，还包括常用的posix C API）
 
 * 继承自mongoose
 	- TCP服务器/TCP客户端、UDP服务器/UDP客户端, SSL/TLS

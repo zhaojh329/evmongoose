@@ -27,7 +27,7 @@ endif()
 if(LUA_SUPPORT)
 	include_directories(${LUA_INCLUDE_DIR})
 	
-	add_library(evmongoose-lua MODULE lua_mongoose.c lua_syslog.c)
+	add_library(evmongoose-lua MODULE lua_mongoose.c lua_posix.c)
 	set_target_properties(evmongoose-lua PROPERTIES OUTPUT_NAME evmongoose PREFIX "")
 		
 	target_link_libraries(evmongoose-lua evmongoose util)

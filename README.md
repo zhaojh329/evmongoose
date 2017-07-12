@@ -16,7 +16,7 @@ could not add my own objects. For example, I want to monitor a signal or a file 
 * New from evmongoose
     - Using libev programming 
 	- Highly customized to extend your application based on libev
-	- Lua API(Depends on lua-ev)
+	- Lua API(except wrapper for evmongoose and additional include frequently-used posix C API)
 
 * Inherited from mongoose
 	- plain TCP, plain UDP, SSL/TLS (over TCP, one-way or two-way)
