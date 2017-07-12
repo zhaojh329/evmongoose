@@ -2,12 +2,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=evmongoose
-PKG_VERSION:=2017-7-11
+PKG_VERSION:=2017-7-12
 PKG_RELEASE:=$(PKG_SOURCE_VERSION)
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/zhaojh329/evmongoose.git
-PKG_SOURCE_VERSION:=2c61c38eaa0483562e9fce382e49e1468e21e3c9
+PKG_SOURCE_VERSION:=96bfd3a5803d3a22ded382ccbf2654e2571291e6
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 
 PKG_CONFIG_DEPENDS:= CONFIG_EVMONGOOSE_SSL_NONE CONFIG_EVMONGOOSE_SSL_OPENSSL CONFIG_EVMONGOOSE_SSL_MBEDTLS CONFIG_EVMONGOOSE_GZIP
@@ -21,12 +21,21 @@ define Package/evmongoose
   SUBMENU:=Networking
   TITLE:=An asynchronous, event(libev) based multi-protocol embedded networking library
   URL:=https://github.com/zhaojh329/evmongoose
-  DEPENDS:=+libev +lua-ev +EVMONGOOSE_SSL_OPENSSL:libopenssl +EVMONGOOSE_SSL_MBEDTLS:libmbedtls +EVMONGOOSE_GZIP:lua-lzlib
+  DEPENDS:=+libev +EVMONGOOSE_SSL_OPENSSL:libopenssl +EVMONGOOSE_SSL_MBEDTLS:libmbedtls
 endef
 
 define Package/evmongoose/description
 	Evmongoose is an asynchronous, event(libev) based multi-protocol embedded networking library.
 	It is based on mongoose and libev implementation and it's support Lua API.
+endef
+
+define Package/evmongoose-lua
+  SUBMENU:=Lua
+  SECTION:=lang
+  CATEGORY:=Languages
+  TITLE:=Lua wrapper for evmongoose
+  URL:=https://github.com/zhaojh329/evmongoose
+  DEPENDS:=+evmongoose +lua-ev +EVMONGOOSE_SSL_OPENSSL:libopenssl +EVMONGOOSE_SSL_MBEDTLS:libmbedtls +EVMONGOOSE_GZIP:lua-lzlib
 endef
 
 define Package/evmongoose/config
@@ -56,7 +65,6 @@ endmenu
 endef
 
 CMAKE_OPTIONS = -DHTTPS_SUPPORT=OFF
-CMAKE_SOURCE_DIR = $(PKG_BUILD_DIR)/src
 
 ifeq ($(CONFIG_EVMONGOOSE_SSL_OPENSSL),y)
   CMAKE_OPTIONS = -DHTTPS_SUPPORT=ON
@@ -68,14 +76,19 @@ endif
 
 define Build/InstallDev
 	$(INSTALL_DIR) $(1)/usr/lib $(1)/usr/include
-	$(CP) $(PKG_BUILD_DIR)/libevmongoose.so $(1)/usr/lib
+	$(CP) $(PKG_BUILD_DIR)/src/libevmongoose.so $(1)/usr/lib
 	$(CP) $(PKG_BUILD_DIR)/src/mongoose.h $(1)/usr/include
 endef
 
 define Package/evmongoose/install
-	$(INSTALL_DIR) $(1)/usr/lib $(1)/usr/lib/lua
-	$(CP) $(PKG_BUILD_DIR)/libevmongoose.so $(1)/usr/lib
-	$(CP) $(PKG_BUILD_DIR)/lua/evmongoose.so $(1)/usr/lib/lua
+	$(INSTALL_DIR) $(1)/usr/lib
+	$(CP) $(PKG_BUILD_DIR)/src/libevmongoose.so $(1)/usr/lib
+endef
+
+define Package/evmongoose-lua/install
+	$(INSTALL_DIR) $(1)/usr/lib/lua
+	$(CP) $(PKG_BUILD_DIR)/src/lua/evmongoose.so $(1)/usr/lib/lua
 endef
 
 $(eval $(call BuildPackage,evmongoose))
+$(eval $(call BuildPackage,evmongoose-lua))
