@@ -121,6 +121,8 @@ static void lua_obj_registry(lua_State* L, void *obj)
 
 static void lua_con_obj_init(lua_State* L, void *obj)
 {
+	luaL_checktype(L, 2, LUA_TFUNCTION);
+	
 	lua_createtable(L, 1, 0);
 	lua_pushvalue(L, 2);
     lua_rawseti(L, -2, 1);
