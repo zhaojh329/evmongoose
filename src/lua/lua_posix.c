@@ -12,7 +12,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 
-static int l_openlog(lua_State *L) 
+static int lp_openlog(lua_State *L) 
 {
 	const char *ident = luaL_checkstring(L, 1);
 	int option = luaL_checkint(L, 2);
@@ -22,7 +22,7 @@ static int l_openlog(lua_State *L)
 	return 0;
 }
 
-static int l_syslog(lua_State *L)
+static int lp_syslog(lua_State *L)
 {
 	int priority = luaL_checkint(L, 1);
 	const char *msg = luaL_checkstring(L, 2);
@@ -31,13 +31,13 @@ static int l_syslog(lua_State *L)
 	return 0;
 }
 
-static int l_closelog(lua_State *L)
+static int lp_closelog(lua_State *L)
 {
 	closelog();
 	return 0;
 }
 
-static int lua_mg_getopt_iter(lua_State *L)
+static int lp_mg_getopt_iter(lua_State *L)
 {
 	int opt, longindex;
 	const char *optstring = luaL_checkstring(L, lua_upvalueindex(1));
@@ -56,7 +56,7 @@ static int lua_mg_getopt_iter(lua_State *L)
 	return 3;
 }
 
-static int lua_mg_getopt(lua_State *L)
+static int lp_mg_getopt(lua_State *L)
 {
 	int i, argc, n = 0;
 	char **argv;
@@ -114,11 +114,11 @@ static int lua_mg_getopt(lua_State *L)
 	if (lua_type(L, 3) == LUA_TTABLE)
 		lua_remove(L, 3);
 
-	lua_pushcclosure(L, lua_mg_getopt_iter, 4);
+	lua_pushcclosure(L, lp_mg_getopt_iter, 4);
 	return 1;
 }
 
-static int lua_forkpty(lua_State *L)
+static int lp_forkpty(lua_State *L)
 {
 	pid_t pid;
 	int pty;
@@ -159,7 +159,7 @@ static int lua_forkpty(lua_State *L)
 	return 2;
 }
 
-static int lua_access(lua_State *L)
+static int lp_access(lua_State *L)
 {
 	const char *pathname = luaL_checkstring(L, 1);
 	const char *s = lua_tostring(L, 2);
@@ -180,7 +180,7 @@ static int lua_access(lua_State *L)
 	return 1;
 }
 
-static int lua_read(lua_State *L)
+static int lp_read(lua_State *L)
 {
 	int fd = luaL_checkinteger(L, 1);
 	int count = luaL_checkinteger(L, 2);
@@ -208,7 +208,7 @@ err:
 	return 2;
 }
 
-static int lua_write(lua_State *L)
+static int lp_write(lua_State *L)
 {
 	int fd = luaL_checkinteger(L, 1);
 	size_t count;
@@ -225,7 +225,7 @@ static int lua_write(lua_State *L)
 	return 1;	
 }
 
-static int lua_run_exec(lua_State *L, int use_shell)
+static int lp_run_exec(lua_State *L, int use_shell)
 {
 	char **argv;
 	const char *path = luaL_checkstring(L, 1);
@@ -262,17 +262,17 @@ static int lua_run_exec(lua_State *L, int use_shell)
 	return 1;
 }
 
-static int lua_exec(lua_State *L)
+static int lp_exec(lua_State *L)
 {
-	return lua_run_exec(L, 0);
+	return lp_run_exec(L, 0);
 }
 
-static int lua_execp(lua_State *L)
+static int lp_execp(lua_State *L)
 {
-	return lua_run_exec(L, 1);
+	return lp_run_exec(L, 1);
 }
 
-static int lua_wait(lua_State *L)
+static int lp_wait(lua_State *L)
 {
 	pid_t pid = luaL_checkinteger(L, 1);
 	int options = lua_tointeger(L, 2);
@@ -304,7 +304,7 @@ static int lua_wait(lua_State *L)
 	return 1;
 }
 
-static int lua_kill(lua_State *L)
+static int lp_kill(lua_State *L)
 {
 	pid_t pid = luaL_checkinteger(L, 1);
 	int sig = luaL_checkinteger(L, 2);
@@ -319,7 +319,7 @@ static int lua_kill(lua_State *L)
 	return 1;
 }
 
-static int lua_fork(lua_State *L)
+static int lp_fork(lua_State *L)
 {
 	pid_t pid = fork();
 	if (pid < 0) {
@@ -332,20 +332,34 @@ static int lua_fork(lua_State *L)
 	return 1;
 }
 
+static int lp_close(lua_State *L)
+{
+	int fd = luaL_checkinteger(L, 1);
+	if (close(fd) < 0) {
+		lua_pushnil(L);
+		lua_pushstring(L, strerror(errno));
+		return 2;
+	}
+	
+	lua_pushinteger(L, 0);
+	return 1;
+}
+
 static const struct luaL_Reg R[] = {
-	{"openlog", l_openlog},
-	{"syslog", l_syslog},
-	{"closelog", l_closelog},
-	{"getopt", lua_mg_getopt},
-	{"forkpty", lua_forkpty},
-	{"access", lua_access},
-	{"read", lua_read},
-	{"write", lua_write},
-	{"exec", lua_exec},
-	{"execp", lua_execp},
-	{"wait", lua_wait},
-	{"kill", lua_kill},
-	{"fork", lua_fork},
+	{"openlog", lp_openlog},
+	{"syslog", lp_syslog},
+	{"closelog", lp_closelog},
+	{"getopt", lp_mg_getopt},
+	{"forkpty", lp_forkpty},
+	{"access", lp_access},
+	{"read", lp_read},
+	{"write", lp_write},
+	{"exec", lp_exec},
+	{"execp", lp_execp},
+	{"wait", lp_wait},
+	{"kill", lp_kill},
+	{"fork", lp_fork},
+	{"close", lp_close},
 	{NULL, NULL}
 };
 
