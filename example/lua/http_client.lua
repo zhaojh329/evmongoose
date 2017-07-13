@@ -2,9 +2,11 @@
 
 local ev = require("ev")
 local evmg = require("evmongoose")
+
+-- https://github.com/LuaDist/lzlib
 local lz = require "zlib"
 local loop = ev.Loop.default
-local url = arg[1] or "http://192.168.83.1:8000"
+local url = arg[1] or "http://www.baidu.com"
 
 local function ev_handle(con, event)
 	if event == evmg.MG_EV_CONNECT then
@@ -30,7 +32,9 @@ local function ev_handle(con, event)
 
 		if headers["Content-Encoding"] == "gzip" then
 			print("Decode Gzip...")
-			body = lz.inflate()(body, "finish")
+			local stream = lz.inflate(body)
+			body = stream:read("*a")
+			stream:close()
 		end
 
 		print("body:", body)
@@ -46,7 +50,7 @@ local mgr = evmg.init(loop)
 -- ssl_key
 -- ssl_ca_cert
 -- ssl_cipher_suites
-local opt  = {extra_headers = "User-Agent:Evmongoose\r\n"}
+local opt  = {extra_headers = "User-Agent:Evmongoose\r\nAccept-Encoding: gzip\r\n"}
 mgr:connect_http(ev_handle, url, opt)
 
 ev.Signal.new(function(loop, sig, revents)
