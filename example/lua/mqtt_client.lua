@@ -44,16 +44,23 @@ local function ev_handle(con, event)
 
 		local topic = "evmongoose"
 		local msg_id = 12
+		local qos = 0
 
-		con:mqtt_subscribe(topic, msg_id);
+		con:mqtt_subscribe(topic, msg_id, qos);
 
 		alive_timer:start(loop)
+
+	elseif event == evmg.MG_EV_MQTT_SUBACK then
+		local msg = con:mqtt_recv()
+		print("conack:", msg.msgid)
 		
 	elseif event == evmg.MG_EV_MQTT_PUBLISH then
-		local topic, payload = con:mqtt_recv()
-		print(topic, payload)
+		local msg = con:mqtt_recv()
+		print("topic:", msg.topic)
+		print("payload:", msg.payload)
+		print("qos:", msg.qos)
+		print("msgid:", msg.msgid)
 
-		-- param: topic, payload, msgid, qos
 		con:mqtt_publish("test", "12345678")
 		
 	elseif event == evmg.MG_EV_MQTT_PINGRESP then

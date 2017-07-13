@@ -970,11 +970,14 @@ static int lua_mg_mqtt_subscribe(lua_State *L)
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
 	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
 	const char *topic = luaL_checkstring(L, 2);
-	int msg_id = lua_tointeger(L, 3);
-	struct mg_mqtt_topic_expression topic_expr = {NULL, 0};
-
-	topic_expr.topic = topic;
-	mg_mqtt_subscribe(con, &topic_expr, 1, msg_id);
+	uint16_t msgid = lua_tointeger(L, 3);
+	uint16_t qos = lua_tointeger(L, 4);
+	struct mg_mqtt_topic_expression topic_expr = {
+		.topic = topic,
+		.qos = qos
+	};
+	
+	mg_mqtt_subscribe(con, &topic_expr, 1, msgid);
 	return 0;
 }
 
@@ -982,10 +985,22 @@ static int lua_mg_mqtt_recv(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
 	struct mg_mqtt_message *msg = (struct mg_mqtt_message *)lcon->ev_data;
-	
+
+	lua_createtable(L, 0, 4);
+
 	lua_pushlstring(L, msg->topic.p, msg->topic.len);
+	lua_setfield(L, -2, "topic");
+	
 	lua_pushlstring(L, msg->payload.p, msg->payload.len);
-	return 2;
+	lua_setfield(L, -2, "payload");
+	
+	lua_pushinteger(L, msg->qos);
+	lua_setfield(L, -2, "qos");
+	
+	lua_pushinteger(L, msg->message_id);
+	lua_setfield(L, -2, "msgid");
+	
+	return 1;
 }
 
 static int lua_mg_mqtt_publish(lua_State *L)
@@ -999,6 +1014,46 @@ static int lua_mg_mqtt_publish(lua_State *L)
 	int qos = lua_tointeger(L, 5);
 	
 	mg_mqtt_publish(con, topic, msgid, MG_MQTT_QOS(qos), payload, len);
+	return 0;
+}
+
+static int lua_mg_mqtt_puback(lua_State *L)
+{
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
+	uint16_t msgid = luaL_checkinteger(L, 2);
+
+	mg_mqtt_puback(con, msgid);
+	return 0;
+}
+
+static int lua_mg_mqtt_pubrec(lua_State *L)
+{
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
+	uint16_t msgid = luaL_checkinteger(L, 2);
+
+	mg_mqtt_pubrec(con, msgid);
+	return 0;
+}
+
+static int lua_mg_mqtt_pubrel(lua_State *L)
+{
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
+	uint16_t msgid = luaL_checkinteger(L, 2);
+
+	mg_mqtt_pubrel(con, msgid);
+	return 0;
+}
+
+static int lua_mg_mqtt_pubcomp(lua_State *L)
+{
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
+	uint16_t msgid = luaL_checkinteger(L, 2);
+
+	mg_mqtt_pubcomp(con, msgid);
 	return 0;
 }
 
@@ -1067,6 +1122,10 @@ static const luaL_Reg evmongoose_con_meta[] = {
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
 	{"mqtt_recv", lua_mg_mqtt_recv},
 	{"mqtt_publish", lua_mg_mqtt_publish},
+	{"mqtt_puback", lua_mg_mqtt_puback},
+	{"mqtt_pubrec", lua_mg_mqtt_pubrec},
+	{"mqtt_pubrel", lua_mg_mqtt_pubrel},
+	{"mqtt_pubcomp", lua_mg_mqtt_pubcomp},
 	{NULL, NULL}
 };
 
