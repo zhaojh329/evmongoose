@@ -54,8 +54,10 @@ math.randomseed(tostring(os.time()):reverse():sub(1, 6))
 
 local function ev_handle(con, event)
 	if event == evmg.MG_EV_HTTP_REQUEST then
-		if con:uri() == "/login.html" then
-			if con:method() ~= "POST" then return end
+		local hm = con:get_evdata()
+		
+		if hm.uri == "/login.html" then
+			if hm.method ~= "POST" then return end
 
 			local user = con:get_http_var("user")
 			local pass = con:get_http_var("pass")
@@ -70,7 +72,7 @@ local function ev_handle(con, event)
 			return true
 		end
 
-		local cookie = con:headers()["Cookie"] or ""
+		local cookie = con:get_http_headers()["Cookie"] or ""
 		local sid = cookie:match("mgs=(%w+)")
 
 		if not find_session(sid) then
@@ -78,7 +80,7 @@ local function ev_handle(con, event)
 			return true
 		end
 
-		if con:uri() == "/logout" then
+		if hm.uri == "/logout" then
 			del_session(sid)
 			con:send_http_redirect(302, "/", "Set-Cookie: mgs=");
 			return true

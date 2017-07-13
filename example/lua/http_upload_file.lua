@@ -20,8 +20,10 @@ local function ev_handle(con, event)
 		con:send(page)
 		return true
 	elseif event == evmg.MG_EV_HTTP_PART_BEGIN then
-		local part = con:get_http_partinfo()
-		print("var_name:", part.var_name, "file_name:", part.file_name)
+		local part = con:get_evdata()
+		print("upload begin")
+		print("var_name:", part.var_name)
+		print("file_name:", part.file_name)
 
 		local file_name = part.file_name
 		if not file_name or #file_name == 0 or file_name:match("[^%w%-%._]+") then
@@ -31,8 +33,11 @@ local function ev_handle(con, event)
 			return true
 		end
 	elseif event == evmg.MG_EV_HTTP_PART_END then
-		local part = con:get_http_partinfo()
-		print("var_name:", part.var_name, "file_name:", part.file_name, "local file name:", part.lfn)
+		local part = con:get_evdata()
+		print("upload finish")
+		print("var_name:", part.var_name)
+		print("file_name:", part.file_name)
+		print("local file name:", part.lfn)
 
 		if not part.lfn then
 			print("Upload file failed")

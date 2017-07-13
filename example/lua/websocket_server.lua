@@ -59,22 +59,26 @@ local function ev_handle(con, event)
 		con:send(page)
 		
 	elseif event == evmg.MG_EV_WEBSOCKET_HANDSHAKE_REQUEST then
-		print("method:", con:method())
-		print("uri:", con:uri())
-		print("proto:", con:proto())
-		print("query_string:", con:query_string())
-		print("remote_addr:", con:remote_addr())
+		-- Fetch http message
+		local hm = con:get_evdata()
+	
+		print("method:", hm.method)
+		print("proto:", hm.proto)
+		print("query_string:", hm.query_string)
+		print("remote_addr:", hm.remote_addr)
 
-		local headers = con:headers()
+		local headers = con:get_http_headers()
 			for k, v in pairs(headers) do
 			print(k .. ": ", v)
 		end
 
 	elseif event == evmg.MG_EV_WEBSOCKET_CONTROL_FRAME then
-		print("recv control frame:", op_str[con:websocket_op()])
+		local msg = con:get_evdata()
+		print("recv control frame:", op_str[msg.op])
 		
 	elseif event == evmg.MG_EV_WEBSOCKET_FRAME then
-		print("recv frame", con:websocket_frame(), op_str[con:websocket_op()])
+		local msg = con:get_evdata()
+		print("recv frame", msg.frame, op_str[msg.op])
 		con:send_websocket_frame("I is evmg", evmg.WEBSOCKET_OP_TEXT)
 	end
 end

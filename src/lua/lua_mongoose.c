@@ -30,6 +30,7 @@ struct lua_mg_connection {
 	struct mg_connection *con;
 	struct mg_connection *con2;	/* Store Accepted con */
 	struct mg_serve_http_opts http_opts;
+	int event;
 	void *ev_data;
 	unsigned flags;
 };
@@ -147,7 +148,7 @@ static void lua_obj_del(lua_State* L, void *obj)
 	lua_rawset(L, -3);
 }
 
-static void lua_mg_ev_handler(struct mg_connection *con, int ev, void *ev_data)
+static void lua_mg_ev_handler(struct mg_connection *con, int event, void *ev_data)
 {
 	lua_State *L = (lua_State *)con->mgr->user_data;
 	struct lua_mg_connection *lcon;
@@ -160,7 +161,8 @@ static void lua_mg_ev_handler(struct mg_connection *con, int ev, void *ev_data)
 		lcon = (struct lua_mg_connection *)con->user_data;
 		lcon->con2 = NULL;
 	}
-	
+
+	lcon->event = event;
 	lcon->ev_data = ev_data;
 	
 	lua_pushcfunction(L, traceback);
@@ -177,9 +179,9 @@ static void lua_mg_ev_handler(struct mg_connection *con, int ev, void *ev_data)
 	lua_insert(L, -3);
 	lua_pop(L, 1);
 
-	lua_pushinteger(L, ev);
+	lua_pushinteger(L, event);
 
-	if (ev == MG_EV_HTTP_PART_END) {
+	if (event == MG_EV_HTTP_PART_END) {
 		struct mg_http_multipart_part *mp = (struct mg_http_multipart_part *)ev_data;
 		struct file_upload_state *fus = (struct file_upload_state *)mp->user_data;
 
@@ -208,7 +210,7 @@ static void lua_mg_ev_handler(struct mg_connection *con, int ev, void *ev_data)
 
 	ret = lua_toboolean(L, -1);
 	
-	switch (ev) {
+	switch (event) {
 	case MG_EV_HTTP_REQUEST:
 		if (con->listener && !ret)
 			mg_serve_http(con, ev_data, lcon->http_opts);		/* Serve static content */
@@ -581,23 +583,160 @@ static int lua_mg_set_flags(lua_State *L)
 	return 0;
 }
 
-/* 
-** Detect connection status
-** If the connection fails, nil is returned and an error message is returned,
-** Otherwise, return true
-*/
-static int lua_mg_connected(lua_State *L)
+/* Returns the corresponding data according to the corresponding event type */
+static int lua_mg_get_evdata(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	int err = *(int *)lcon->ev_data;
+	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
+	int event = lcon->event;
 
-	if (err) {
-		lua_pushnil(L);
-		lua_pushstring(L, strerror(err));
-		return 2;
-	}
+	lua_newtable(L);
+				
+	switch (event) {
+	case MG_EV_CONNECT: {
+			int err = *(int *)lcon->ev_data;
+
+			lua_pushboolean(L, !err);
+			lua_setfield(L, -2, "connected");
+				
+			lua_pushstring(L, strerror(err));
+			lua_setfield(L, -2, "err");
+
+			break;
+		}	
+	case MG_EV_HTTP_REQUEST: {
+			struct http_message *hm = (struct http_message *)lcon->ev_data;
+
+			lua_pushlstring(L, hm->uri.p, hm->uri.len);
+			lua_setfield(L, -2, "uri");
+
+			lua_pushlstring(L, hm->method.p, hm->method.len);
+			lua_setfield(L, -2, "method");
+
+			lua_pushlstring(L, hm->proto.p, hm->proto.len);
+			lua_setfield(L, -2, "proto");
+
+			lua_pushlstring(L, hm->query_string.p, hm->query_string.len);
+			lua_setfield(L, -2, "query_string");
+
+			lua_pushstring(L, inet_ntoa(con->sa.sin.sin_addr));
+			lua_setfield(L, -2, "remote_addr");
+			
+			break;
+		}
+	case MG_EV_HTTP_REPLY: {
+			struct http_message *hm = (struct http_message *)lcon->ev_data;
+
+			lua_pushinteger(L, hm->resp_code);
+			lua_setfield(L, -2, "status_code");
+
+			lua_pushlstring(L, hm->resp_status_msg.p, hm->resp_status_msg.len);
+			lua_setfield(L, -2, "status_msg");
+			
+			break;
+		}
+	case MG_EV_WEBSOCKET_CONTROL_FRAME:
+	case MG_EV_WEBSOCKET_FRAME: {
+			struct websocket_message *wm = (struct websocket_message *)lcon->ev_data;
+
+			if (wm->flags & WEBSOCKET_OP_CONTINUE)
+				lua_pushinteger(L, WEBSOCKET_OP_CONTINUE);
+			else if (wm->flags & WEBSOCKET_OP_TEXT)
+				lua_pushinteger(L, WEBSOCKET_OP_TEXT);
+			else if (wm->flags & WEBSOCKET_OP_BINARY)
+				lua_pushinteger(L, WEBSOCKET_OP_BINARY);
+			else if (wm->flags & WEBSOCKET_OP_CLOSE)
+				lua_pushinteger(L, WEBSOCKET_OP_CLOSE);
+			else if (wm->flags & WEBSOCKET_OP_PING)
+				lua_pushinteger(L, WEBSOCKET_OP_PING);
+			else if (wm->flags & WEBSOCKET_OP_PONG)
+				lua_pushinteger(L, WEBSOCKET_OP_PONG);
+			else
+				lua_pushinteger(L, -1);
+			
+			lua_setfield(L, -2, "op");
+
+			if (event == MG_EV_WEBSOCKET_FRAME) {
+				lua_pushlstring(L, (const char *)wm->data, wm->size);
+				lua_setfield(L, -2, "frame");
+			}
 	
-	lua_pushboolean(L, 1);
+			break;
+		}
+	case MG_EV_HTTP_PART_BEGIN:
+	case MG_EV_HTTP_PART_END: {
+			struct mg_http_multipart_part *mp = (struct mg_http_multipart_part *)lcon->ev_data;
+			struct file_upload_state *fus = (struct file_upload_state *)mp->user_data;
+
+			lua_pushstring(L, mp->var_name);
+			lua_setfield(L, -2, "var_name");
+
+			lua_pushstring(L, mp->file_name);
+			lua_setfield(L, -2, "file_name");
+
+			if (fus && mp->status >= 0 && fus->fp) {
+				lua_pushstring(L, fus->lfn);
+				lua_setfield(L, -2, "lfn");
+			}
+			break;
+		}
+	case MG_EV_MQTT_CONNACK: {
+			struct mg_mqtt_message *msg = (struct mg_mqtt_message *)lcon->ev_data;
+
+			lua_pushinteger(L, msg->connack_ret_code);
+			lua_setfield(L, -2, "code");
+
+			switch (msg->connack_ret_code) {
+			case MG_EV_MQTT_CONNACK_ACCEPTED:
+				lua_pushstring(L, "Connection Accepted");
+				break;
+			case MG_EV_MQTT_CONNACK_UNACCEPTABLE_VERSION:
+				lua_pushstring(L, "Connection Refused: unacceptable protocol version");
+				break;
+			case MG_EV_MQTT_CONNACK_IDENTIFIER_REJECTED:
+				lua_pushstring(L, "Connection Refused: identifier rejected");
+				break;
+			case MG_EV_MQTT_CONNACK_SERVER_UNAVAILABLE:
+				lua_pushstring(L, "Connection Refused: server unavailable");
+				break;
+			case MG_EV_MQTT_CONNACK_BAD_AUTH:
+				lua_pushstring(L, "Connection Refused: bad user name or password");
+				break;
+			case MG_EV_MQTT_CONNACK_NOT_AUTHORIZED:
+				lua_pushstring(L, "Connection Refused: not authorized");
+				break;
+			default:
+				lua_pushstring(L, "Unknown Error");
+				break;
+			}
+			lua_setfield(L, -2, "err");
+			
+			break;
+		}
+	case MG_EV_MQTT_SUBACK: {
+			struct mg_mqtt_message *msg = (struct mg_mqtt_message *)lcon->ev_data;
+			lua_pushinteger(L, msg->message_id);
+			lua_setfield(L, -2, "mid");
+			break;
+		}
+	case MG_EV_MQTT_PUBLISH: {
+			struct mg_mqtt_message *msg = (struct mg_mqtt_message *)lcon->ev_data;
+
+			lua_pushlstring(L, msg->topic.p, msg->topic.len);
+			lua_setfield(L, -2, "topic");
+			
+			lua_pushlstring(L, msg->payload.p, msg->payload.len);
+			lua_setfield(L, -2, "payload");
+			
+			lua_pushinteger(L, msg->qos);
+			lua_setfield(L, -2, "qos");
+			
+			lua_pushinteger(L, msg->message_id);
+			lua_setfield(L, -2, "mid");
+			break;
+		}
+	}
+
 	return 1;
 }
 
@@ -694,25 +833,7 @@ static int lua_mg_http_reverse_proxy(lua_State *L)
 	return 0;
 }
 
-static int lua_mg_resp_code(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct http_message *hm = (struct http_message *)lcon->ev_data;
-
-	lua_pushinteger(L, hm->resp_code);
-	return 1;
-}
-
-static int lua_mg_resp_status_msg(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct http_message *hm = (struct http_message *)lcon->ev_data;
-
-	lua_pushlstring(L, hm->resp_status_msg.p, hm->resp_status_msg.len);
-	return 1;
-}
-
-static int lua_mg_http_headers(lua_State *L)
+static int lua_mg_get_http_headers(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
 	struct http_message *hm = (struct http_message *)lcon->ev_data;
@@ -733,51 +854,7 @@ static int lua_mg_http_headers(lua_State *L)
 	return 1;
 }
 
-static int lua_mg_http_method(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct http_message *hm = (struct http_message *)lcon->ev_data;
-
-	lua_pushlstring(L, hm->method.p, hm->method.len);
-	return 1;
-}
-
-static int lua_mg_http_uri(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct http_message *hm = (struct http_message *)lcon->ev_data;
-
-	lua_pushlstring(L, hm->uri.p, hm->uri.len);
-	return 1;
-}
-
-static int lua_mg_http_proto(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct http_message *hm = (struct http_message *)lcon->ev_data;
-	
-	lua_pushlstring(L, hm->proto.p, hm->proto.len);
-	return 1;
-}
-
-static int lua_mg_http_query_string(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct http_message *hm = (struct http_message *)lcon->ev_data;
-	
-	lua_pushlstring(L, hm->query_string.p, hm->query_string.len);
-	return 1;
-}
-
-static int lua_mg_http_remote_addr(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
-	lua_pushstring(L, inet_ntoa(con->sa.sin.sin_addr));
-	return 1;
-}
-
-static int lua_mg_http_body(lua_State *L)
+static int lua_mg_get_http_body(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
 	struct http_message *hm = (struct http_message *)lcon->ev_data;
@@ -803,28 +880,6 @@ static int lua_mg_get_http_var(lua_State *L)
 	return 1;
 }
 
-static int lua_mg_get_http_partinfo(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct mg_http_multipart_part *mp = (struct mg_http_multipart_part *)lcon->ev_data;
-	struct file_upload_state *fus = (struct file_upload_state *)mp->user_data;
-	
-	lua_createtable(L, 0, 2);
-
-	lua_pushstring(L, mp->var_name);
-	lua_setfield(L, -2, "var_name");
-
-	lua_pushstring(L, mp->file_name);
-	lua_setfield(L, -2, "file_name");
-
-	if (fus && mp->status >= 0 && fus->fp) {
-		lua_pushstring(L, fus->lfn);
-		lua_setfield(L, -2, "lfn");
-	}
-	
-	return 1;
-}
-
 static int lua_mg_is_websocket(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
@@ -834,38 +889,6 @@ static int lua_mg_is_websocket(lua_State *L)
 		lua_pushboolean(L, 1);
 	else
 		lua_pushboolean(L, 0);
-	return 1;
-}
-
-static int lua_mg_websocket_op(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct websocket_message *wm = (struct websocket_message *)lcon->ev_data;
-
-	if (wm->flags & WEBSOCKET_OP_CONTINUE)
-		lua_pushinteger(L, WEBSOCKET_OP_CONTINUE);
-	else if (wm->flags & WEBSOCKET_OP_TEXT)
-		lua_pushinteger(L, WEBSOCKET_OP_TEXT);
-	else if (wm->flags & WEBSOCKET_OP_BINARY)
-		lua_pushinteger(L, WEBSOCKET_OP_BINARY);
-	else if (wm->flags & WEBSOCKET_OP_CLOSE)
-		lua_pushinteger(L, WEBSOCKET_OP_CLOSE);
-	else if (wm->flags & WEBSOCKET_OP_PING)
-		lua_pushinteger(L, WEBSOCKET_OP_PING);
-	else if (wm->flags & WEBSOCKET_OP_PONG)
-		lua_pushinteger(L, WEBSOCKET_OP_PONG);
-	else
-		lua_pushinteger(L, -1);
-	
-	return 1;
-}
-
-static int lua_mg_websocket_frame(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct websocket_message *wm = (struct websocket_message *)lcon->ev_data;
-
-	lua_pushlstring(L, (const char *)wm->data, wm->size);
 	return 1;
 }
 
@@ -880,7 +903,6 @@ static int lua_mg_send_websocket_frame(lua_State *L)
 	mg_send_websocket_frame(con, op, buf, len);
 	return 0;
 }
-
 
 static int lua_mg_is_mqtt(lua_State *L)
 {
@@ -931,76 +953,20 @@ static int lua_mg_mqtt_handshake(lua_State *L)
 	return 0;
 }
 
-static int lua_mg_mqtt_conack(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct mg_mqtt_message *msg = (struct mg_mqtt_message *)lcon->ev_data;
-	
-	lua_pushinteger(L, msg->connack_ret_code);
-
-	switch (msg->connack_ret_code) {
-	case MG_EV_MQTT_CONNACK_ACCEPTED:
-		lua_pushstring(L, "Connection Accepted");
-		break;
-	case MG_EV_MQTT_CONNACK_UNACCEPTABLE_VERSION:
-		lua_pushstring(L, "Connection Refused: unacceptable protocol version");
-		break;
-	case MG_EV_MQTT_CONNACK_IDENTIFIER_REJECTED:
-		lua_pushstring(L, "Connection Refused: identifier rejected");
-		break;
-	case MG_EV_MQTT_CONNACK_SERVER_UNAVAILABLE:
-		lua_pushstring(L, "Connection Refused: server unavailable");
-		break;
-	case MG_EV_MQTT_CONNACK_BAD_AUTH:
-		lua_pushstring(L, "Connection Refused: bad user name or password");
-		break;
-	case MG_EV_MQTT_CONNACK_NOT_AUTHORIZED:
-		lua_pushstring(L, "Connection Refused: not authorized");
-		break;
-	default:
-		lua_pushstring(L, "Unknown Error");
-		break;
-	}
-
-	return 2;
-}
-
 static int lua_mg_mqtt_subscribe(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
 	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
 	const char *topic = luaL_checkstring(L, 2);
-	uint16_t msgid = lua_tointeger(L, 3);
+	uint16_t mid = lua_tointeger(L, 3);
 	uint16_t qos = lua_tointeger(L, 4);
 	struct mg_mqtt_topic_expression topic_expr = {
 		.topic = topic,
 		.qos = qos
 	};
 	
-	mg_mqtt_subscribe(con, &topic_expr, 1, msgid);
+	mg_mqtt_subscribe(con, &topic_expr, 1, mid);
 	return 0;
-}
-
-static int lua_mg_mqtt_recv(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct mg_mqtt_message *msg = (struct mg_mqtt_message *)lcon->ev_data;
-
-	lua_createtable(L, 0, 4);
-
-	lua_pushlstring(L, msg->topic.p, msg->topic.len);
-	lua_setfield(L, -2, "topic");
-	
-	lua_pushlstring(L, msg->payload.p, msg->payload.len);
-	lua_setfield(L, -2, "payload");
-	
-	lua_pushinteger(L, msg->qos);
-	lua_setfield(L, -2, "qos");
-	
-	lua_pushinteger(L, msg->message_id);
-	lua_setfield(L, -2, "msgid");
-	
-	return 1;
 }
 
 static int lua_mg_mqtt_publish(lua_State *L)
@@ -1010,10 +976,10 @@ static int lua_mg_mqtt_publish(lua_State *L)
 	const char *topic = luaL_checkstring(L, 2);
 	size_t len = 0;
 	const char *payload = luaL_checklstring(L, 3, &len);
-	int msgid = lua_tointeger(L, 4);
+	int mid = lua_tointeger(L, 4);
 	int qos = lua_tointeger(L, 5);
 	
-	mg_mqtt_publish(con, topic, msgid, MG_MQTT_QOS(qos), payload, len);
+	mg_mqtt_publish(con, topic, mid, MG_MQTT_QOS(qos), payload, len);
 	return 0;
 }
 
@@ -1021,9 +987,9 @@ static int lua_mg_mqtt_puback(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
 	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
-	uint16_t msgid = luaL_checkinteger(L, 2);
+	uint16_t mid = luaL_checkinteger(L, 2);
 
-	mg_mqtt_puback(con, msgid);
+	mg_mqtt_puback(con, mid);
 	return 0;
 }
 
@@ -1031,9 +997,9 @@ static int lua_mg_mqtt_pubrec(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
 	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
-	uint16_t msgid = luaL_checkinteger(L, 2);
+	uint16_t mid = luaL_checkinteger(L, 2);
 
-	mg_mqtt_pubrec(con, msgid);
+	mg_mqtt_pubrec(con, mid);
 	return 0;
 }
 
@@ -1041,9 +1007,9 @@ static int lua_mg_mqtt_pubrel(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
 	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
-	uint16_t msgid = luaL_checkinteger(L, 2);
+	uint16_t mid = luaL_checkinteger(L, 2);
 
-	mg_mqtt_pubrel(con, msgid);
+	mg_mqtt_pubrel(con, mid);
 	return 0;
 }
 
@@ -1051,9 +1017,9 @@ static int lua_mg_mqtt_pubcomp(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
 	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
-	uint16_t msgid = luaL_checkinteger(L, 2);
+	uint16_t mid = luaL_checkinteger(L, 2);
 
-	mg_mqtt_pubcomp(con, msgid);
+	mg_mqtt_pubcomp(con, mid);
 	return 0;
 }
 
@@ -1092,7 +1058,7 @@ static int lua_mg_time(lua_State *L)
 static const luaL_Reg evmongoose_con_meta[] = {
 	{"get_mgr", lua_get_mgr},
 	{"set_flags", lua_mg_set_flags},
-	{"connected", lua_mg_connected},
+	{"get_evdata", lua_mg_get_evdata},
 	{"recv", lua_mg_recv},
 	{"sent_size", lua_mg_sent_size},
 	{"send", lua_mg_send},
@@ -1101,26 +1067,14 @@ static const luaL_Reg evmongoose_con_meta[] = {
 	{"send_http_redirect", lua_mg_send_http_redirect},
 	{"send_http_error", lua_mg_send_http_error},
 	{"http_reverse_proxy", lua_mg_http_reverse_proxy},
-	{"resp_code", lua_mg_resp_code},
-	{"resp_status_msg", lua_mg_resp_status_msg},
-	{"method", lua_mg_http_method},
-	{"uri", lua_mg_http_uri},
-	{"proto", lua_mg_http_proto},
-	{"query_string", lua_mg_http_query_string},
-	{"remote_addr", lua_mg_http_remote_addr},
-	{"headers", lua_mg_http_headers},
-	{"body", lua_mg_http_body},
+	{"get_http_headers", lua_mg_get_http_headers},
+	{"get_http_body", lua_mg_get_http_body},
 	{"get_http_var", lua_mg_get_http_var},
-	{"get_http_partinfo", lua_mg_get_http_partinfo},
 	{"is_websocket", lua_mg_is_websocket},
-	{"websocket_op", lua_mg_websocket_op},
-	{"websocket_frame", lua_mg_websocket_frame},
 	{"send_websocket_frame", lua_mg_send_websocket_frame},
 	{"is_mqtt", lua_mg_is_mqtt},
 	{"mqtt_handshake", lua_mg_mqtt_handshake},
-	{"mqtt_conack", lua_mg_mqtt_conack},
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
-	{"mqtt_recv", lua_mg_mqtt_recv},
 	{"mqtt_publish", lua_mg_mqtt_publish},
 	{"mqtt_puback", lua_mg_mqtt_puback},
 	{"mqtt_pubrec", lua_mg_mqtt_pubrec},

@@ -14,9 +14,9 @@ end, 5, 5)
 
 local function ev_handle(con, event)
 	if event == evmg.MG_EV_CONNECT then
-		local s, err = con:connected()
-		if not s then
-			print("connect failed:", err)
+		local result = con:get_evdata()
+		if not result.connected then
+			print("connect failed:", result.err)
 			return
 		end
 
@@ -33,33 +33,33 @@ local function ev_handle(con, event)
 		con:mqtt_handshake(opt)
 		
 	elseif event == evmg.MG_EV_MQTT_CONNACK then
-		local code, err = con:mqtt_conack()
+		local msg = con:get_evdata()
 		
-		if code ~= evmg.MG_EV_MQTT_CONNACK_ACCEPTED then
-			print("mqtt connection failed:", err)
+		if msg.code ~= evmg.MG_EV_MQTT_CONNACK_ACCEPTED then
+			print("mqtt connection failed:", msg.err)
 			return
 		else
 			print("mqtt connection ok")
 		end
 
 		local topic = "evmongoose"
-		local msg_id = 12
+		local mid = 12
 		local qos = 0
 
-		con:mqtt_subscribe(topic, msg_id, qos);
-
+		con:mqtt_subscribe(topic, mid, qos);
+		print("subscribe:", topic)
 		alive_timer:start(loop)
 
 	elseif event == evmg.MG_EV_MQTT_SUBACK then
-		local msg = con:mqtt_recv()
-		print("conack:", msg.msgid)
+		local msg = con:get_evdata()
+		print("conack mid:", msg.mid)
 		
 	elseif event == evmg.MG_EV_MQTT_PUBLISH then
-		local msg = con:mqtt_recv()
+		local msg = con:get_evdata()
 		print("topic:", msg.topic)
 		print("payload:", msg.payload)
 		print("qos:", msg.qos)
-		print("msgid:", msg.msgid)
+		print("msgid:", msg.mid)
 
 		con:mqtt_publish("test", "12345678")
 		

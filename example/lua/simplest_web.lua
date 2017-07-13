@@ -1,6 +1,7 @@
 #!/usr/bin/lua
 
 local ev = require("ev")
+-- https://github.com/LuaDist/lzlib
 local lz = require("zlib")
 local evmg = require("evmongoose")
 local loop = ev.Loop.default
@@ -8,27 +9,31 @@ local loop = ev.Loop.default
 local function ev_handle(con, event)
 	if event ~= evmg.MG_EV_HTTP_REQUEST then return end
 
-	local uri = con:uri()
+	-- Fetch http message
+	local hm = con:get_evdata()
+	local uri = hm.uri
 
 	print("uri:", uri)
 
 	if uri ~= "/luatest" then return end
 
-	print("method:", con:method())
-	print("proto:", con:proto())
-	print("query_string:", con:query_string())
-	print("remote_addr:", con:remote_addr())
+	print("method:", hm.method)
+	print("proto:", hm.proto)
+	print("query_string:", hm.query_string)
+	print("remote_addr:", hm.remote_addr)
 
-	local headers = con:headers()
+	local headers = con:get_http_headers()
 		for k, v in pairs(headers) do
 		print(k .. ": ", v)
 	end
 
-	local body = con:body()
+	local body = con:get_http_body()
 
 	if headers["Content-Encoding"] == "gzip" then
 		print("Decode Gzip...")
-		body = lz.inflate()(body, "finish")
+		local stream = lz.inflate(body)
+		body = stream:read("*a")
+		stream:close()
 	end
 
 	print("body:", body)

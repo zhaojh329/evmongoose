@@ -10,25 +10,22 @@ local url = arg[1] or "http://www.baidu.com"
 
 local function ev_handle(con, event)
 	if event == evmg.MG_EV_CONNECT then
-		--[[
-			Detect connection status, If the connection fails, nil is 
-			returned and follow an error message is returned,
-			Otherwise, return true
-		--]]
-		print("connection status:", con:connected())
+		local result = con:get_evdata()
+		print("connection result:", result.connected, result.err)
 		
 	elseif event == evmg.MG_EV_HTTP_REPLY then
 		con:set_flags(evmg.MG_F_CLOSE_IMMEDIATELY)
+		local hm = con:get_evdata()
 		
-		print("resp_code:", con:resp_code())
-		print("resp_status_msg:", con:resp_status_msg())
+		print("resp_code:", hm.status_code)
+		print("resp_status_msg:", hm.status_msg)
 
-		local headers = con:headers()
+		local headers = con:get_http_headers()
 		for k, v in pairs(headers) do
 			print(k .. ": ", v)
 		end
 
-		local body = con:body()
+		local body = con:get_http_body()
 
 		if headers["Content-Encoding"] == "gzip" then
 			print("Decode Gzip...")

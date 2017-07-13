@@ -5,9 +5,10 @@ local evmg = require("evmongoose")
 local loop = ev.Loop.default
 
 local function ev_handle(con, event)
-	if event ~= evmg.MG_EV_HTTP_REQUEST or con:uri() ~= "/proxy" then
-		return
-	end
+	if event ~= evmg.MG_EV_HTTP_REQUEST then return end
+
+	local hm = con:get_evdata()
+	if hm.uri ~= "/proxy" then return end
 
 	--See mongoose.h:4866
 	con:http_reverse_proxy("/proxy", "http://www.baidu.com")
