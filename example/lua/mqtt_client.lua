@@ -78,6 +78,7 @@ local function ev_handle(con, event)
 		
 		ev.Timer.new(function()
 			print("Try Reconnect to", broker)
+			local mgr = con:get_mgr()
 			mgr:connect(ev_handle, broker)
 		end, 5):start(loop)
 	end
