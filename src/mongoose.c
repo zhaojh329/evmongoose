@@ -9795,7 +9795,7 @@ static void mqtt_handler(struct mg_connection *nc, int ev, void *ev_data) {
       len = parse_mqtt(io, &mm);
       if (len == -1) break; /* not fully buffered */
       nc->handler(nc, MG_MQTT_EVENT_BASE + mm.cmd, &mm);
-      mbuf_remove(io, io->len);
+      mbuf_remove(io, len);
       break;
 	case MG_EV_POLL: {
 		time_t now = mg_time();
