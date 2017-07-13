@@ -1095,7 +1095,7 @@ static const luaL_Reg evmongoose_con_meta[] = {
 	{"connected", lua_mg_connected},
 	{"recv", lua_mg_recv},
 	{"sent_size", lua_mg_sent_size},
-	{"sended", lua_mg_send},
+	{"send", lua_mg_send},
 	{"send_http_chunk", lua_mg_send_http_chunk},
 	{"send_http_head", lua_mg_send_http_head},
 	{"send_http_redirect", lua_mg_send_http_redirect},
