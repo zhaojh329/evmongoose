@@ -3561,8 +3561,6 @@ void mg_mgr_handle_conn(struct mg_connection *nc, int fd_flags, double now) {
     if ((fd_flags & _MG_F_FD_CAN_WRITE) && nc->send_mbuf.len > 0) {
       mg_write_to_socket(nc);
     }
-    mg_if_poll(nc, (time_t) now);
-    mg_if_timer(nc, now);
   }
 
   if (worth_logging) {
