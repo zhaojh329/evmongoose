@@ -603,7 +603,8 @@ static int lua_mg_get_evdata(lua_State *L)
 			lua_setfield(L, -2, "err");
 
 			break;
-		}	
+		}
+	case MG_EV_WEBSOCKET_HANDSHAKE_REQUEST:
 	case MG_EV_HTTP_REQUEST: {
 			struct http_message *hm = (struct http_message *)lcon->ev_data;
 
