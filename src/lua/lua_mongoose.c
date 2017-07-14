@@ -967,7 +967,7 @@ static int lua_mg_mqtt_subscribe(lua_State *L)
 	topics_len = lua_objlen(L, 2);
 
 	if (topics_len > 0)
-		topic_expr = calloc(1, sizeof(struct mg_mqtt_topic_expression));
+		topic_expr = calloc(topics_len, sizeof(struct mg_mqtt_topic_expression));
 
 	for (i = 0; i < topics_len; i++) {	
 		lua_rawgeti(L, 2, i + 1);
