@@ -23,6 +23,11 @@ target_link_libraries(tcp_client evmongoose)
 add_executable(mqtt_client mqtt_client.c)
 target_link_libraries(mqtt_client evmongoose)
 
+if (ENABLE_MQTT_BROKER)
+	add_executable(mqtt_broker mqtt_broker.c)
+	target_link_libraries(mqtt_broker evmongoose)
+endif (ENABLE_MQTT_BROKER)
+	
 add_executable(websocket_server websocket_server.c)
 target_link_libraries(websocket_server evmongoose)
 
