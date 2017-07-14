@@ -44,7 +44,7 @@ local function ev_handle(con, event)
 
 		local topic = {
 			{name = "topic1"},
-			{name = "topic2", qos = 0}
+			{name = "topic2", qos = 1}
 		}
 		local mid = 12
 
