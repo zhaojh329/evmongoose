@@ -42,11 +42,13 @@ local function ev_handle(con, event)
 			print("mqtt connection ok")
 		end
 
-		local topic = "evmongoose"
+		local topic = {
+			{name = "topic1"},
+			{name = "topic2", qos = 0}
+		}
 		local mid = 12
-		local qos = 0
 
-		con:mqtt_subscribe(topic, mid, qos);
+		con:mqtt_subscribe(topic, mid)
 		print("subscribe:", topic)
 		alive_timer:start(loop)
 

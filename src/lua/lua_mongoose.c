@@ -959,15 +959,36 @@ static int lua_mg_mqtt_subscribe(lua_State *L)
 {
 	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
 	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
-	const char *topic = luaL_checkstring(L, 2);
-	uint16_t mid = lua_tointeger(L, 3);
-	uint16_t qos = lua_tointeger(L, 4);
-	struct mg_mqtt_topic_expression topic_expr = {
-		.topic = topic,
-		.qos = qos
-	};
+	struct mg_mqtt_topic_expression *topic_expr;
+	int i, topics_len, mid;
 	
-	mg_mqtt_subscribe(con, &topic_expr, 1, mid);
+	luaL_checktype(L, 2, LUA_TTABLE);
+
+	topics_len = lua_objlen(L, 2);
+
+	if (topics_len > 0)
+		topic_expr = calloc(1, sizeof(struct mg_mqtt_topic_expression));
+
+	for (i = 0; i < topics_len; i++) {	
+		lua_rawgeti(L, 2, i + 1);
+		luaL_checktype(L, -1, LUA_TTABLE);
+
+		lua_getfield(L, -1, "name");
+		topic_expr[i].topic = luaL_checkstring(L, -1);
+		lua_pop(L, 1);
+
+		lua_getfield(L, -1, "qos");
+		topic_expr[i].qos = lua_tointeger(L, -1);
+		lua_pop(L, 2);
+	}
+	
+	mid = lua_tointeger(L, 3);
+
+	if (topics_len > 0) {
+		mg_mqtt_subscribe(con, topic_expr, topics_len, mid);
+		free(topic_expr);
+	}
+	
 	return 0;
 }
 
