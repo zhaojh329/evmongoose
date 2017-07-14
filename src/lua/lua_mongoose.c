@@ -405,6 +405,7 @@ static int lua_mg_listen(lua_State *L)
 	lua_con_obj_init(L, lcon);
 	lua_obj_registry(L, lcon);
 
+	memset(&lcon->http_opts, 0, sizeof(struct mg_serve_http_opts));
 	memset(&opts, 0, sizeof(opts));
 	opts.error_string = &err;
 	
