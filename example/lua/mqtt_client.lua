@@ -49,7 +49,6 @@ local function ev_handle(con, event)
 		local mid = 12
 
 		con:mqtt_subscribe(topic, mid)
-		print("subscribe:", topic)
 		alive_timer:start(loop)
 
 	elseif event == evmg.MG_EV_MQTT_SUBACK then
