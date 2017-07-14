@@ -32,6 +32,18 @@ int main(int argc, char *argv[])
 	* TODO: Add a HTTP status page that shows current sessions
 	* and subscriptions
 	*/
+
+	
+	/*
+	* Iterates over all MQTT session connections. Example:
+	*
+	* ```c
+	* struct mg_mqtt_session *s;
+	* for (s = mg_mqtt_next(brk, NULL); s != NULL; s = mg_mqtt_next(brk, s)) {
+	*   // Do something
+	* }
+	* ```
+	*/
 	
 	ev_run(loop, 0);
 
