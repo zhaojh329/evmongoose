@@ -81,7 +81,7 @@ struct ctl_msg {
 
 #if MG_ENABLE_MQTT
 struct mg_mqtt_message;
-MG_INTERNAL int parse_mqtt(struct mbuf *io, struct mg_mqtt_message *mm);
+MG_INTERNAL int parse_mqtt(struct mg_connection *nc, struct mg_mqtt_message *mm);
 #endif
 
 /* Forward declarations for testing. */
@@ -9690,7 +9690,8 @@ static const char *scanto(const char *p, struct mg_str *s) {
   return s->p + s->len;
 }
 
-MG_INTERNAL int parse_mqtt(struct mbuf *io, struct mg_mqtt_message *mm) {
+MG_INTERNAL int parse_mqtt(struct mg_connection *nc, struct mg_mqtt_message *mm) {
+  struct mbuf *io = &nc->recv_mbuf;
   uint8_t header;
   size_t len = 0;
   int cmd;
@@ -9761,6 +9762,11 @@ MG_INTERNAL int parse_mqtt(struct mbuf *io, struct mg_mqtt_message *mm) {
       
       mm->payload.p = p;
       mm->payload.len = end - p;
+
+	  if (mm->qos == 1)
+	  	mg_mqtt_puback(nc, mm->message_id);
+	  else if (mm->qos == 2)
+	  	mg_mqtt_pubrec(nc, mm->message_id);
 	  
       break;
     }
@@ -9792,7 +9798,7 @@ static void mqtt_handler(struct mg_connection *nc, int ev, void *ev_data) {
 
   switch (ev) {
     case MG_EV_RECV:
-      len = parse_mqtt(io, &mm);
+      len = parse_mqtt(nc, &mm);
       if (len == -1) break; /* not fully buffered */
       nc->handler(nc, MG_MQTT_EVENT_BASE + mm.cmd, &mm);
       mbuf_remove(io, len);

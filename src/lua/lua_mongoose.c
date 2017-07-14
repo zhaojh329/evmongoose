@@ -1006,46 +1006,6 @@ static int lua_mg_mqtt_publish(lua_State *L)
 	return 0;
 }
 
-static int lua_mg_mqtt_puback(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
-	uint16_t mid = luaL_checkinteger(L, 2);
-
-	mg_mqtt_puback(con, mid);
-	return 0;
-}
-
-static int lua_mg_mqtt_pubrec(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
-	uint16_t mid = luaL_checkinteger(L, 2);
-
-	mg_mqtt_pubrec(con, mid);
-	return 0;
-}
-
-static int lua_mg_mqtt_pubrel(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
-	uint16_t mid = luaL_checkinteger(L, 2);
-
-	mg_mqtt_pubrel(con, mid);
-	return 0;
-}
-
-static int lua_mg_mqtt_pubcomp(lua_State *L)
-{
-	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
-	struct mg_connection *con = lcon->con2 ? lcon->con2 : lcon->con;
-	uint16_t mid = luaL_checkinteger(L, 2);
-
-	mg_mqtt_pubcomp(con, mid);
-	return 0;
-}
-
 /*************************evmongoose global function*******************************************/
 static int lua_mg_mgr_init(lua_State *L)
 {
@@ -1099,10 +1059,6 @@ static const luaL_Reg evmongoose_con_meta[] = {
 	{"mqtt_handshake", lua_mg_mqtt_handshake},
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
 	{"mqtt_publish", lua_mg_mqtt_publish},
-	{"mqtt_puback", lua_mg_mqtt_puback},
-	{"mqtt_pubrec", lua_mg_mqtt_pubrec},
-	{"mqtt_pubrel", lua_mg_mqtt_pubrel},
-	{"mqtt_pubcomp", lua_mg_mqtt_pubcomp},
 	{NULL, NULL}
 };
 
