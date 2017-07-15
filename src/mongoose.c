@@ -9707,7 +9707,7 @@ MG_INTERNAL int parse_mqtt(struct mg_connection *nc, struct mg_mqtt_message *mm)
   } while ((*p++ & 128) != 0 && ((size_t)(p - io->buf) <= io->len));
 
   end = p + len;
-  if (end > io->buf + io->len + 1) {
+  if (end > io->buf + io->len) {
     return -1;
   }
 
@@ -9792,8 +9792,9 @@ static void mqtt_handler(struct mg_connection *nc, int ev, void *ev_data) {
   int len;
   struct mbuf *io = &nc->recv_mbuf;
   struct mg_mqtt_message mm;
-  memset(&mm, 0, sizeof(mm));
 
+TRY:  
+  memset(&mm, 0, sizeof(mm));
   nc->handler(nc, ev, ev_data);
 
   switch (ev) {
@@ -9802,6 +9803,8 @@ static void mqtt_handler(struct mg_connection *nc, int ev, void *ev_data) {
       if (len == -1) break; /* not fully buffered */
       nc->handler(nc, MG_MQTT_EVENT_BASE + mm.cmd, &mm);
       mbuf_remove(io, len);
+      if (io->len >= 2)
+        goto TRY;
       break;
 	case MG_EV_POLL: {
 		time_t now = mg_time();
