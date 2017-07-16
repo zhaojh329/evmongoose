@@ -1038,6 +1038,47 @@ static int lua_mg_time(lua_State *L)
 	return 1;
 }
 
+static void __lua_mg_md5(lua_State *L, unsigned char *hash)
+{
+	MD5_CTX ctx;
+	int i, nargs;
+	size_t len;
+	const char *data;
+
+	MD5_Init(&ctx);
+
+	nargs = lua_gettop(L);
+
+	for (i = 0; i < nargs; i++) {
+		data = luaL_checklstring(L, i + 1, &len);
+		MD5_Update(&ctx, (const unsigned char *)data, len);
+	}
+
+	MD5_Final(hash, &ctx);
+}
+
+static int lua_mg_md5(lua_State *L)
+{
+	unsigned char hash[16];
+
+	__lua_mg_md5(L, hash);
+	lua_pushlstring(L, (const char *)hash, 16);
+	
+	return 1;
+}
+
+static int lua_mg_cs_md5(lua_State *L)
+{
+	unsigned char hash[16];
+	char cs[33] = "";
+
+	__lua_mg_md5(L, hash);
+	cs_to_hex(cs, hash, sizeof(hash));
+	lua_pushstring(L, cs);
+	
+	return 1;
+}
+
 static const luaL_Reg evmongoose_con_meta[] = {
 	{"get_mgr", lua_get_mgr},
 	{"set_flags", lua_mg_set_flags},
@@ -1078,7 +1119,9 @@ static const luaL_Reg evmongoose_meta[] = {
 
 static const luaL_Reg evmongoose_fun[] = {
 	{"init", lua_mg_mgr_init},
-	{"mg_time", lua_mg_time},	
+	{"mg_time", lua_mg_time},
+	{"md5", lua_mg_md5},
+	{"cs_md5", lua_mg_cs_md5},
 	{NULL, NULL}
 };
 
