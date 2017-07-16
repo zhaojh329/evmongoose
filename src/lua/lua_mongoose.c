@@ -1006,6 +1006,18 @@ static int lua_mg_mqtt_publish(lua_State *L)
 	return 0;
 }
 
+
+static int lua_mg_con_tostring(lua_State *L)
+{
+	char buf[32];
+	struct lua_mg_connection *lcon = luaL_checkudata(L, 1, EVMONGOOSE_CON_MT);
+
+	sprintf(buf, "%p", lcon);
+	lua_pushstring(L, buf);
+	
+	return 1;
+}
+
 /*************************evmongoose global function*******************************************/
 static int lua_mg_mgr_init(lua_State *L)
 {
@@ -1100,6 +1112,7 @@ static const luaL_Reg evmongoose_con_meta[] = {
 	{"mqtt_handshake", lua_mg_mqtt_handshake},
 	{"mqtt_subscribe", lua_mg_mqtt_subscribe},
 	{"mqtt_publish", lua_mg_mqtt_publish},
+	{"tostring", lua_mg_con_tostring},
 	{NULL, NULL}
 };
 
