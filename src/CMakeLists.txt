@@ -1,7 +1,8 @@
-include_directories(${LIBEV_INCLUDE_DIR})
+include_directories(${LIBEV_INCLUDE_DIRS} ${HTTP_PARSER_INCLUDE_DIRS})
 
 add_library(emn SHARED emn.c)
-target_link_libraries(emn ${LIBEV_LIBRARY})
+set_target_properties(emn PROPERTIES VERSION 0.1)
+target_link_libraries(emn ${LIBEV_LIBRARIES} ${HTTP_PARSER_LIBRARIES})
 
 install(FILES emn.h
 	DESTINATION include
