@@ -6,6 +6,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
 #set(CMAKE_VERBOSE_MAKEFILE ON)
 
+# The version number.
+set(EMN_VERSION_MAJOR 0)
+set(EMN_VERSION_MINOR 1)
+
 find_package(Libev 4.22 REQUIRED)
 find_package(HttpParser 2.1 REQUIRED)
 
