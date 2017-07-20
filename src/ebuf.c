@@ -1,5 +1,7 @@
 #include "ebuf.h"
-
+#include <assert.h>
+#include <string.h>
+	
 void ebuf_init(struct ebuf *ebuf, size_t initial_size)
 {
 	ebuf->len = ebuf->size = 0;
@@ -29,4 +31,38 @@ void ebuf_resize(struct ebuf *ebuf, size_t new_size)
 		ebuf->buf = buf;
 		ebuf->size = new_size;
 	}
+}
+
+size_t ebuf_insert(struct ebuf *ebuf, size_t off, const void *buf, size_t len)
+{
+	char *p = NULL;
+
+	assert(ebuf);
+	assert(off <= ebuf->len);
+
+	if (ebuf->len + len <= ebuf->size) {
+		memmove(ebuf->buf + off + len, ebuf->buf + off, ebuf->len - off);
+		if (buf)
+			memcpy(ebuf->buf + off, buf, len);
+		ebuf->len += len;
+	} else {
+		size_t new_size = (size_t)((ebuf->len + len) * EBUF_SIZE_MULTIPLIER);
+		if ((p = (char *)realloc(ebuf->buf, new_size))) {
+			ebuf->buf = p;
+			memmove(ebuf->buf + off + len, ebuf->buf + off, ebuf->len - off);
+			if (buf)
+				memcpy(ebuf->buf + off, buf, len);
+			ebuf->len += len;
+			ebuf->size = new_size;
+		} else {
+			len = 0;
+		}
+	}
+
+	return len;
+}
+
+size_t ebuf_append(struct ebuf *ebuf, const void *buf, size_t len)
+{
+	return ebuf_insert(ebuf, ebuf->len, buf, len);
 }
