@@ -14,7 +14,8 @@
 #include "emn_buf.h"
 #include "emn_utils.h"
 
-#define EMN_TCP_RECV_BUFFER_SIZE 1024
+#define EMN_TCP_RECV_BUFFER_SIZE	1024
+#define EMN_MAX_HTTP_HEADERS		40
 
 /* Events. Meaning of event parameter (evp) is given in the comment. */
 #define EMN_EV_POLL		0   /* Sent to each connection on each mg_mgr_poll() call */
@@ -25,9 +26,17 @@
 #define EMN_EV_CLOSE	5   /* Connection is closed. NULL */
 #define EMN_EV_TIMER	6   /* now >= conn->ev_timer_time. double * */
 
+#define EMN_FLAGS_HTTP	(1 << 0)
+
 struct emn_object;
 struct emn_server;
 struct emn_client;
+
+/* Describes chunk of memory */
+struct emn_str {
+	const char *p; /* Memory chunk pointer */
+	size_t len;    /* Memory chunk length */
+};
 
 typedef void (*emn_event_handler_t)(struct emn_client *cli, int event, void *data);
 								   
