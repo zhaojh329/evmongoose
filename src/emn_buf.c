@@ -1,7 +1,7 @@
-#include "ebuf.h"
 #include <assert.h>
 #include <string.h>
-	
+#include "emn_buf.h"
+
 void ebuf_init(struct ebuf *ebuf, size_t initial_size)
 {
 	ebuf->len = ebuf->size = 0;
@@ -65,4 +65,12 @@ size_t ebuf_insert(struct ebuf *ebuf, size_t off, const void *buf, size_t len)
 size_t ebuf_append(struct ebuf *ebuf, const void *buf, size_t len)
 {
 	return ebuf_insert(ebuf, ebuf->len, buf, len);
+}
+
+void ebuf_remove(struct ebuf *ebuf, size_t n)
+{
+	if (n > 0 && n <= ebuf->len) {
+		memmove(ebuf->buf, ebuf->buf + n, ebuf->len - n);
+		ebuf->len -= n;
+	}
 }

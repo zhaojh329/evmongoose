@@ -5,15 +5,14 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
 #include <arpa/inet.h>
 
 #include <http_parser.h>
 #include <ev.h>
 
 #include "emn_config.h"
+#include "emn_buf.h"
+#include "emn_utils.h"
 
 #define EMN_TCP_RECV_BUFFER_SIZE 1024
 
@@ -30,12 +29,15 @@ struct emn_object;
 struct emn_server;
 struct emn_client;
 
-typedef void (*emn_event_handler_t)(struct emn_object *obj, int event, void *data);
+typedef void (*emn_event_handler_t)(struct emn_client *cli, int event, void *data);
 								   
 struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler);
 void emn_server_destroy(struct emn_server *srv);
 void emn_client_destroy(struct emn_client *cli);
 
-void emn_set_protocol_http_websocket(struct emn_server *srv);
+void emn_set_protocol_http(struct emn_server *srv);
+
+struct ebuf *emn_get_rbuf(struct emn_client *cli);
+struct ebuf *emn_get_sbuf(struct emn_client *cli);
 
 #endif

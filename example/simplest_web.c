@@ -1,4 +1,4 @@
-#include <emn.h>
+#include "emn.h"
 #include <stdio.h>
 
 static void signal_cb(struct ev_loop *loop, ev_signal *w, int revents)
@@ -7,9 +7,28 @@ static void signal_cb(struct ev_loop *loop, ev_signal *w, int revents)
 	ev_break(loop, EVBREAK_ALL);
 }
 
-void event_handler(struct emn_object *obj, int event, void *data)
+void event_handler(struct emn_client *cli, int event, void *data)
 {
-	
+	switch (event) {
+    case EMN_EV_ACCEPT: {
+			struct sockaddr_in *sin = (struct sockaddr_in *)data;
+	        printf("%p: new conn from %s:%d\n", cli, inet_ntoa(sin->sin_addr), ntohs(sin->sin_port));
+        	break;
+    	}
+	case EMN_EV_RECV: {
+			struct ebuf *rbuf = emn_get_rbuf(cli);
+			int len = *(int *)data;
+			printf("recv %d: [%.*s]\n", len, (int)rbuf->len, rbuf->buf);
+			//ebuf_remove(rbuf, len);
+			break;
+		}
+	case EMN_EV_CLOSE: {
+			printf("client(%p) closed\n", cli);
+			break;
+		}
+    default:
+		break;
+    }
 }
 
 int main(int argc, char **argv)
@@ -30,8 +49,8 @@ int main(int argc, char **argv)
 		goto err;
 	}
 	
-	emn_set_protocol_http_websocket(srv);
-	printf("listen on: %s\n", address);
+	emn_set_protocol_http(srv);
+	printf("%p: listen on: %s\n", srv, address);
 	
 	ev_run(loop, 0);
 

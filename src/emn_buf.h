@@ -48,4 +48,7 @@ size_t ebuf_append(struct ebuf *ebuf, const void *buf, size_t len);
  */
 size_t ebuf_insert(struct ebuf *ebuf, size_t off, const void *buf, size_t len);
 
+/* Removes `data_size` bytes from the beginning of the buffer. */
+void ebuf_remove(struct ebuf *ebuf, size_t n);
+
 #endif

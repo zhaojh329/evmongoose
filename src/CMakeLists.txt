@@ -7,7 +7,7 @@ configure_file(emn_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/emn_config.h)
 	
 include_directories(${LIBEV_INCLUDE_DIRS} ${HTTP_PARSER_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 
-add_library(emn SHARED emn.c ebuf.c)
+add_library(emn SHARED emn.c emn_buf.c emn_utils.c)
 set_target_properties(emn PROPERTIES VERSION ${EMN_VERSION_MAJOR}.${EMN_VERSION_MINOR})
 target_link_libraries(emn ${LIBEV_LIBRARIES} ${HTTP_PARSER_LIBRARIES})
 
