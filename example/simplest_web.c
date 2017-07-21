@@ -19,6 +19,8 @@ int main(int argc, char **argv)
 	struct emn_server *srv = NULL;
 	const char *address = "8000";
 	
+	printf("emn version: %d.%d\n", EMN_VERSION_MAJOR, EMN_VERSION_MINOR);
+	
 	ev_signal_init(&sig_watcher, signal_cb, SIGINT);
 	ev_signal_start(loop, &sig_watcher);
 	

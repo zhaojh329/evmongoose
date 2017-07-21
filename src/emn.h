@@ -1,9 +1,6 @@
 #ifndef __EMN_H_
 #define __EMN_H_
 
-#define EMN_VERSION_MAJOR 0
-#define EMN_VERSION_MINOR 1
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -15,6 +12,8 @@
 
 #include <http_parser.h>
 #include <ev.h>
+
+#include "emn_config.h"
 
 #define EMN_TCP_RECV_BUFFER_SIZE 1024
 

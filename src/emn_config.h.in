@@ -1,0 +1,7 @@
+#ifndef __EMN_CONFIG_H_
+#define __EMN_CONFIG_H_
+
+#define EMN_VERSION_MAJOR @EMN_VERSION_MAJOR@
+#define EMN_VERSION_MINOR @EMN_VERSION_MINOR@
+
+#endif
