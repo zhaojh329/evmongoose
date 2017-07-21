@@ -127,7 +127,7 @@ static void lua_con_obj_init(lua_State* L, void *obj)
 	lua_createtable(L, 1, 0);
 	lua_pushvalue(L, 2);
     lua_rawseti(L, -2, 1);
-	lua_setfenv(L, -2);
+	lua_setuservalue(L, -2);
 }
 
 static void *lua_obj_new(lua_State* L, size_t size, const char *tname)
@@ -173,7 +173,7 @@ static void lua_mg_ev_handler(struct mg_connection *con, int event, void *ev_dat
 	lua_pushlightuserdata(L, lcon);
 	lua_rawget(L, -2);
 
-	lua_getfenv(L, -1);
+	lua_getuservalue(L, -1);
 	lua_rawgeti(L, -1, 1);
 
 	lua_insert(L, -3);
@@ -479,7 +479,7 @@ static void dns_resolve_cb(struct mg_dns_message *msg, void *data, enum mg_resol
 	lua_pushlightuserdata(L, dns);
 	lua_rawget(L, -2);
 
-	lua_getfenv(L, -1);
+	lua_getuservalue(L, -1);
 	lua_rawgeti(L, -1, 1);
 
 	lua_insert(L, -3);
@@ -964,7 +964,7 @@ static int lua_mg_mqtt_subscribe(lua_State *L)
 	
 	luaL_checktype(L, 2, LUA_TTABLE);
 
-	topics_len = lua_objlen(L, 2);
+	topics_len = lua_rawlen(L, 2);
 
 	if (topics_len > 0)
 		topic_expr = calloc(topics_len, sizeof(struct mg_mqtt_topic_expression));
@@ -1146,20 +1146,20 @@ int luaopen_evmongoose(lua_State *L)
     luaL_newmetatable(L, EVMONGOOSE_MT);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
-    luaL_register(L, NULL, evmongoose_meta);
+    luaL_setfuncs(L, evmongoose_meta, 0);
 
 	luaL_newmetatable(L, EVMONGOOSE_CON_MT);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
-    luaL_register(L, NULL, evmongoose_con_meta);
+    luaL_setfuncs(L, evmongoose_con_meta, 0);
 
 	luaL_newmetatable(L, EVMONGOOSE_DNS_MT);
     lua_pushvalue(L, -1);
     lua_setfield(L, -2, "__index");
-    luaL_register(L, NULL, evmongoose_dns_meta);
+    luaL_setfuncs(L, evmongoose_dns_meta, 0);
 
 	lua_newtable(L);
-	luaL_register(L, NULL, evmongoose_fun);
+	luaL_setfuncs(L, evmongoose_fun, 0);
 
 	luaopen_evmongoose_posix(L);
 	lua_setfield(L, -2, "posix");

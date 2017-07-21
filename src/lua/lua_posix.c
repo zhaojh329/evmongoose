@@ -65,7 +65,7 @@ static int lp_mg_getopt(lua_State *L)
 	luaL_checkstring(L, 2);
 	luaL_checktype(L, 1, LUA_TTABLE);
 
-	argc = lua_objlen(L, 1) + 1;
+	argc = lua_rawlen(L, 1) + 1;
 	lua_pushinteger(L, argc);
 	
 	argv = lua_newuserdata(L, argc * sizeof(char *));
@@ -77,7 +77,7 @@ static int lp_mg_getopt(lua_State *L)
 	}
 
 	if (lua_type(L, 3) == LUA_TTABLE)
-		n = lua_objlen(L, 3);
+		n = lua_rawlen(L, 3);
 
 	longopts = lua_newuserdata(L, (n + 1) * sizeof(struct option));
 	
@@ -234,7 +234,7 @@ static int lp_run_exec(lua_State *L, int use_shell)
 	n = 0;
 	
 	if (lua_type(L, 2) == LUA_TTABLE)
-		n = lua_objlen(L, 2);
+		n = lua_rawlen(L, 2);
 	
 	argv = lua_newuserdata(L, (n + 2) * sizeof(char*));
 
@@ -366,7 +366,7 @@ static const struct luaL_Reg R[] = {
 int luaopen_evmongoose_posix(lua_State *L)
 {
 	lua_newtable(L);
-	luaL_register(L, NULL, R);
+	luaL_setfuncs(L, R, 0);
 
 	/* The option argument to openlog() */
 	EVMG_LUA_SETCONST(LOG_CONS);
