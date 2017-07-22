@@ -31,11 +31,8 @@
 #define EMN_EV_HTTP_REPLY	101	/* struct http_message * */
 #define EMN_EV_HTTP_CHUNK	102	/* struct http_message * */
 
-
-#define EMN_FLAGS_HTTP	(1 << 0)
-
-/* Flags that are settable by user */
-#define EMN_FLAGS_SEND_AND_CLOSE	(1 << 1)	/* Push remaining data and close  */
+#define EMN_FLAGS_HTTP				(1 << 0)
+#define EMN_FLAGS_SEND_AND_CLOSE	(1 << 1)	/* Send remaining data and close  */
 #define EMN_FLAGS_CLOSE_IMMEDIATELY (1 << 2)	/* Disconnect */
 
 struct emn_server;
