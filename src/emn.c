@@ -576,3 +576,4 @@ void emn_client_destroy(struct emn_client *cli)
 		free(cli);
 	}
 }
+
