@@ -34,7 +34,10 @@
 
 #define EMN_FLAGS_HTTP	(1 << 0)
 
-struct emn_object;
+/* Flags that are settable by user */
+#define EMN_FLAGS_SEND_AND_CLOSE	(1 << 10)	/* Push remaining data and close  */
+#define EMN_FLAGS_CLOSE_IMMEDIATELY (1 << 11)	/* Disconnect */
+
 struct emn_server;
 struct emn_client;
 
@@ -44,26 +47,34 @@ struct emn_str {
 	size_t len;    /* Memory chunk length */
 };
 
+struct http_opts {
+	/* Path to web root directory */
+	const char *document_root;
+
+	/* List of index files. Default is "" */
+	const char *index_files;
+};
+
 void emn_str_init(struct emn_str *str, const char *at, size_t len);
 
-typedef void (*emn_event_handler_t)(struct emn_client *cli, int event, void *data);
+typedef int (*emn_event_handler_t)(struct emn_client *cli, int event, void *data);
 								   
 struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler);
 void emn_server_destroy(struct emn_server *srv);
 void emn_client_destroy(struct emn_client *cli);
 
-void emn_set_protocol_http(struct emn_server *srv);
+void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts);
 
 struct ebuf *emn_get_rbuf(struct emn_client *cli);
 struct ebuf *emn_get_sbuf(struct emn_client *cli);
 
 enum http_method emn_get_http_method(struct emn_client *cli);
-struct emn_str *emn_get_http_uri(struct emn_client *cli);
+struct emn_str *emn_get_http_url(struct emn_client *cli);
+struct emn_str *emn_get_http_path(struct emn_client *cli);
+struct emn_str *emn_get_http_query(struct emn_client *cli);
 uint8_t emn_get_http_version_major(struct emn_client *cli);
 uint8_t emn_get_http_version_minor(struct emn_client *cli);
 struct emn_str *emn_get_http_header(struct emn_client *cli, const char *name);
 struct emn_str *emn_get_http_body(struct emn_client *cli);
-
-void emn_serve_http(struct emn_client *cli);
 
 #endif

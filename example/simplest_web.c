@@ -7,7 +7,7 @@ static void signal_cb(struct ev_loop *loop, ev_signal *w, int revents)
 	ev_break(loop, EVBREAK_ALL);
 }
 
-void event_handler(struct emn_client *cli, int event, void *data)
+int event_handler(struct emn_client *cli, int event, void *data)
 {
 	switch (event) {
     case EMN_EV_ACCEPT: {
@@ -25,18 +25,22 @@ void event_handler(struct emn_client *cli, int event, void *data)
 			break;
 		}
 	case EMN_EV_HTTP_REQUEST: {
+#if 1
 			enum http_method method = emn_get_http_method(cli);
-			struct emn_str *uri = emn_get_http_uri(cli);
+			struct emn_str *url = emn_get_http_url(cli);
+			struct emn_str *path = emn_get_http_path(cli);
+			struct emn_str *query = emn_get_http_query(cli);
 			struct emn_str *host = emn_get_http_header(cli, "host");
 			struct emn_str *body = emn_get_http_body(cli);
 			
 			printf("method: %s\n", http_method_str(method));
-			printf("uri: %.*s\n", (int)uri->len, uri->p);
+			printf("url: %.*s\n", (int)url->len, url->p);
+			printf("path: %.*s\n", (int)path->len, path->p);
+			printf("query: %.*s\n", (int)query->len, query->p);
 			printf("proto: %d.%d\n", emn_get_http_version_major(cli), emn_get_http_version_minor(cli));
 			printf("Host: %.*s\n", (int)host->len, host->p);
 			printf("body: %.*s\n", (int)body->len, body->p);
-
-			emn_serve_http(cli);
+#endif
 			break;
 		}
 	case EMN_EV_CLOSE: {
@@ -46,6 +50,8 @@ void event_handler(struct emn_client *cli, int event, void *data)
     default:
 		break;
     }
+
+	return 0;
 }
 
 int main(int argc, char **argv)
@@ -66,7 +72,7 @@ int main(int argc, char **argv)
 		goto err;
 	}
 	
-	emn_set_protocol_http(srv);
+	emn_set_protocol_http(srv, NULL);
 	printf("%p: listen on: %s\n", srv, address);
 	
 	ev_run(loop, 0);

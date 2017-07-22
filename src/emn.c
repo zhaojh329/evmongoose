@@ -1,12 +1,16 @@
 #include "emn.h"
 #include "list.h"
+#include <errno.h>
+#include <stdarg.h>
+#include <sys/sendfile.h>
 
 /* HTTP message */
 struct http_message {
 	http_parser parser;
-	
-	/* HTTP Request line (or HTTP response line) */
-	struct emn_str uri;    /* "/my_file.html" */
+
+	struct emn_str url;
+	struct emn_str path;
+	struct emn_str query;
 
 	/* Headers */
 	struct emn_str header_names[EMN_MAX_HTTP_HEADERS];
@@ -23,6 +27,7 @@ struct emn_server {
 	int sock;
 	ev_io ior;
 	uint8_t flags;
+	void *opts;		/* Pointing to protocol related structures */
 	struct ev_loop *loop;
 	struct list_head client_list;
 };
@@ -32,8 +37,10 @@ struct emn_client {
 	emn_event_handler_t proto_handler;
 	
 	int sock;
+	int send_fd;	/* File descriptor of File to send */
 	ev_io ior;
 	ev_io iow;
+	uint8_t flags;
 	struct ebuf rbuf;	/* recv buf */
 	struct ebuf sbuf;	/* send buf */
 	void *data;			/* Pointing to protocol related structures */
@@ -63,10 +70,22 @@ inline enum http_method emn_get_http_method(struct emn_client *cli)
 	return hm->parser.method;
 }
 
-inline struct emn_str *emn_get_http_uri(struct emn_client *cli)
+inline struct emn_str *emn_get_http_url(struct emn_client *cli)
 {
 	struct http_message *hm = (struct http_message *)cli->data;
-	return &hm->uri;
+	return &hm->url;
+}
+
+inline struct emn_str *emn_get_http_path(struct emn_client *cli)
+{
+	struct http_message *hm = (struct http_message *)cli->data;
+	return &hm->path;
+}
+
+inline struct emn_str *emn_get_http_query(struct emn_client *cli)
+{
+	struct http_message *hm = (struct http_message *)cli->data;
+	return &hm->query;
 }
 
 inline uint8_t emn_get_http_version_major(struct emn_client *cli)
@@ -103,12 +122,13 @@ inline struct emn_str *emn_get_http_body(struct emn_client *cli)
 	return &hm->body;
 }
 
-inline static void emn_call(struct emn_client *cli, int event, void *data)
+inline static int emn_call(struct emn_client *cli, int event, void *data)
 {
 	emn_event_handler_t handler = cli->proto_handler ? cli->proto_handler : cli->handler;
 	
 	if (handler)
-		handler(cli, event, data);
+		return handler(cli, event, data);
+	return 0;
 }
 
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
@@ -141,7 +161,30 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 
 static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
+	struct emn_client *cli = (struct emn_client *)w->data;
+	struct ebuf *sbuf = &cli->sbuf;
+	ssize_t len = write(w->fd, sbuf->buf, sbuf->len);
+	if (len > 0)
+		ebuf_remove(sbuf, len);
+
 	
+	if ((cli->flags & EMN_FLAGS_CLOSE_IMMEDIATELY) || 
+		(sbuf->len == 0 && (cli->flags & EMN_FLAGS_SEND_AND_CLOSE))) {
+		emn_client_destroy(cli);
+		return;
+	}
+
+	if (sbuf->len == 0) {
+		ev_io_stop(cli->srv->loop, &cli->iow);
+		if (cli->send_fd > 0) {
+			struct stat st;
+			
+			fstat(cli->send_fd, &st);
+			sendfile(w->fd, cli->send_fd, NULL, st.st_size);
+			close(cli->send_fd);
+			cli->send_fd = -1;
+		}
+	}
 }
 
 static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
@@ -183,17 +226,162 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	ev_io_start(loop, &cli->ior);
 	
 	ev_io_init(&cli->iow, ev_write_cb, sock, EV_WRITE);
-	cli->ior.data = cli;
+	cli->iow.data = cli;
 
 	emn_call(cli, EMN_EV_ACCEPT, &sin);
+}
+
+static const char *emn_http_status_message(int code)
+{
+	switch (code) {
+	case 301:
+		return "Moved";
+	case 302:
+		return "Found";
+	case 400:
+		return "Bad Request";
+	case 401:
+		return "Unauthorized";
+	case 403:
+		return "Forbidden";
+	case 404:
+		return "Not Found";
+	case 416:
+		return "Requested Range Not Satisfiable";
+	case 418:
+		return "I'm a teapot";
+	case 500:
+		return "Internal Server Error";
+	case 502:
+		return "Bad Gateway";
+	case 503:
+		return "Service Unavailable";
+	default:
+		return "OK";
+	}
+}
+
+void emn_send(struct emn_client *cli, const void *buf, int len)
+{
+	ebuf_append(&cli->sbuf, buf, len);
+    ev_io_start(cli->srv->loop, &cli->iow);
+}
+
+int emn_printf(struct emn_client *cli, const char *fmt, ...)
+{
+	int len;
+	va_list ap;
+	char buf[1024] = "";
+	
+	va_start(ap, fmt);
+	len = vsnprintf(buf, sizeof(buf), fmt, ap);
+	va_end(ap);
+
+	emn_send(cli, buf, len);
+	
+	return len;
+}
+
+void emn_send_http_response_line(struct emn_client *cli, int code, const char *extra_headers)
+{
+	emn_printf(cli, "HTTP/1.1 %d %s\r\nServer: Emn %d.%d\r\n", code, emn_http_status_message(code), 
+		EMN_VERSION_MAJOR, EMN_VERSION_MINOR);
+	if (extra_headers)
+		emn_printf(cli, "%s\r\n", extra_headers);
+}
+
+void emn_send_http_head(struct emn_client *cli, int code, ssize_t content_length, const char *extra_headers)
+{
+	emn_send_http_response_line(cli, code, extra_headers);
+	if (content_length < 0)
+		emn_printf(cli, "%s", "Transfer-Encoding: chunked\r\n");
+	else
+		emn_printf(cli, "Content-Length: %zd\r\n", content_length);
+	emn_send(cli, "\r\n", 2);
+}
+
+void emn_send_http_error(struct emn_client *cli, int code, const char *reason)
+{
+	if (!reason)
+		reason = emn_http_status_message(code);
+
+	emn_send_http_head(cli, code, strlen(reason), "Content-Type: text/plain\r\nConnection: close");
+	emn_send(cli, reason, strlen(reason));
+	cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
+}
+
+static void emn_send_http_file(struct emn_client *cli)
+{
+	struct emn_server *srv = cli->srv;
+	struct http_opts *opts = (struct http_opts *)srv->opts;
+	struct emn_str *path = emn_get_http_path(cli);
+	const char *document_root = opts ? (opts->document_root ? opts->document_root : ".") : ".";
+	char *local_path = calloc(1, strlen(document_root) + path->len + 1);
+	struct stat st;
+	int err;
+	int code = 200;
+	
+	strcpy(local_path, document_root);
+	memcpy(local_path + strlen(document_root), path->p, path->len);
+
+	err = stat(local_path, &st);
+	if (err < 0) {
+		switch (err) {
+		case EACCES:
+			code = 403;
+	        break;
+		case ENOENT:
+	        code = 404;
+	        break;
+	      default:
+	        code = 500;
+		}
+	}
+	
+	if (code == 200 && S_ISDIR(st.st_mode)) {
+		emn_send_http_error(cli, 404, NULL);
+		goto end;
+	}
+
+	if (code != 200) {
+		emn_send_http_error(cli, code, NULL);
+		goto end;
+	}
+
+	cli->send_fd = open(local_path, O_RDONLY);
+
+	emn_send_http_response_line(cli, code, NULL);
+    emn_printf(cli,
+              "Content-Type: text/html\r\n"
+              "Content-Length: %zu"
+              "\r\n\r\n", st.st_size);
+end:
+	free(local_path);
+}
+
+static void emn_serve_http(struct emn_client *cli)
+{
+	emn_send_http_file(cli);
 }
 
 int on_url(http_parser *parser, const char *at, size_t len)
 {	
 	struct emn_client *cli = (struct emn_client *)parser->data;
 	struct http_message *hm = (struct http_message *)cli->data;
+	struct http_parser_url url;
 
-	emn_str_init(&hm->uri, at, len);
+	emn_str_init(&hm->url, at, len);
+	
+	if (http_parser_parse_url(at, len, 0, &url))
+		printf("http_parser_parse_url failed\n");
+	else {
+		if (url.field_set & (1 << UF_PATH))
+			emn_str_init(&hm->path, at + url.field_data[UF_PATH].off, url.field_data[UF_PATH].len);
+
+		if (url.field_set & (1 << UF_QUERY))
+			emn_str_init(&hm->query, at + url.field_data[UF_QUERY].off, url.field_data[UF_QUERY].len);
+	}
+		
     return 0;
 }
 
@@ -263,7 +451,9 @@ int on_message_complete(http_parser *parser)
 
 	printf("body:%.*s\n", (int)hm->body.len, hm->body.p);
 #endif
-	emn_call(cli, EMN_EV_HTTP_REQUEST, hm);
+
+	if (!emn_call(cli, EMN_EV_HTTP_REQUEST, hm))
+		emn_serve_http(cli);
 	
 	return 0;
 }
@@ -277,11 +467,7 @@ static http_parser_settings parser_settings =
 	.on_message_complete = on_message_complete
 };
 
-void emn_serve_http(struct emn_client *cli)
-{
-}
-
-static void emn_http_handler(struct emn_client *cli, int event, void *data)
+static int emn_http_handler(struct emn_client *cli, int event, void *data)
 {
 	cli->handler(cli, event, data);
 
@@ -291,12 +477,15 @@ static void emn_http_handler(struct emn_client *cli, int event, void *data)
 		nparsed = http_parser_execute(&hm->parser, &parser_settings, cli->rbuf.buf, cli->rbuf.len);
 		printf("nparsed = %zu\n", nparsed);
 	}
+	
+	return 0;
 }
 
-void emn_set_protocol_http(struct emn_server *srv)
+void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts)
 {
 	srv->proto_handler = emn_http_handler;
 	srv->flags |= EMN_FLAGS_HTTP;
+	srv->opts = opts;
 }
 
 struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler)
@@ -346,6 +535,9 @@ void emn_server_destroy(struct emn_server *srv)
 		list_for_each_entry_safe(cli, tmp, &srv->client_list, list) {
 			emn_client_destroy(cli);
 		}
+
+		if (srv->opts)
+			free(srv->opts);
 		
 		free(srv);
 	}
