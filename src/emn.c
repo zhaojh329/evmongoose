@@ -3,6 +3,8 @@
 
 /* HTTP message */
 struct http_message {
+	http_parser parser;
+	
 	/* HTTP Request line (or HTTP response line) */
 	struct emn_str uri;    /* "/my_file.html" */
 
@@ -39,6 +41,12 @@ struct emn_client {
 	struct list_head list;
 };
 
+inline void emn_str_init(struct emn_str *str, const char *at, size_t len)
+{
+	str->p = at;
+	str-> len = len;
+}
+
 inline struct ebuf *emn_get_rbuf(struct emn_client *cli)
 {
 	return &cli->rbuf;
@@ -49,10 +57,56 @@ inline struct ebuf *emn_get_sbuf(struct emn_client *cli)
 	return &cli->sbuf;
 }
 
+inline enum http_method emn_get_http_method(struct emn_client *cli)
+{
+	struct http_message *hm = (struct http_message *)cli->data;
+	return hm->parser.method;
+}
+
+inline struct emn_str *emn_get_http_uri(struct emn_client *cli)
+{
+	struct http_message *hm = (struct http_message *)cli->data;
+	return &hm->uri;
+}
+
+inline uint8_t emn_get_http_version_major(struct emn_client *cli)
+{
+	struct http_message *hm = (struct http_message *)cli->data;
+	return hm->parser.http_major;
+}
+
+inline uint8_t emn_get_http_version_minor(struct emn_client *cli)
+{
+	struct http_message *hm = (struct http_message *)cli->data;
+	return hm->parser.http_minor;
+}
+
+inline struct emn_str *emn_get_http_header(struct emn_client *cli, const char *name)
+{
+	int i = 0;
+	struct http_message *hm = (struct http_message *)cli->data;
+	struct emn_str *header_names = hm->header_names;
+	struct emn_str *header_values = hm->header_values;
+	while (i < EMN_MAX_HTTP_HEADERS) {
+		if (!strncasecmp(header_names[i].p, name, header_names[i].len)) {
+			return header_values + i;
+			break;
+		}
+		i++;
+	}
+	return NULL;
+}
+
+inline struct emn_str *emn_get_http_body(struct emn_client *cli)
+{
+	struct http_message *hm = (struct http_message *)cli->data;
+	return &hm->body;
+}
+
 inline static void emn_call(struct emn_client *cli, int event, void *data)
 {
 	emn_event_handler_t handler = cli->proto_handler ? cli->proto_handler : cli->handler;
-
+	
 	if (handler)
 		handler(cli, event, data);
 }
@@ -116,9 +170,10 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	cli->sock = sock;
 
 	if (srv->flags & EMN_FLAGS_HTTP) {
-		cli->data = calloc(1, sizeof(http_parser));
-		http_parser_init((http_parser *)cli->data, HTTP_REQUEST);
-		((http_parser *)cli->data)->data = cli;
+		struct http_message *hm = calloc(1, sizeof(struct http_message));
+		http_parser_init(&hm->parser, HTTP_REQUEST);
+		hm->parser.data = cli;
+		cli->data = hm;
 	}
 	
 	list_add(&cli->list, &srv->client_list);
@@ -136,38 +191,80 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 int on_url(http_parser *parser, const char *at, size_t len)
 {	
 	struct emn_client *cli = (struct emn_client *)parser->data;
-	
+	struct http_message *hm = (struct http_message *)cli->data;
+
+	emn_str_init(&hm->uri, at, len);
     return 0;
 }
 
 int on_header_field(http_parser *parser, const char *at, size_t len)
 {
-	printf("proto: %d.%d\n", parser->http_major, parser->http_minor);
-	printf("Header field: %.*s\n", (int)len, at);
+	int i = 0;
+	struct emn_client *cli = (struct emn_client *)parser->data;
+	struct http_message *hm = (struct http_message *)cli->data;
+	struct emn_str *header_names = hm->header_names;
+	
+	while (i < EMN_MAX_HTTP_HEADERS) {
+		if (header_names[i].len == 0) {
+			emn_str_init(header_names + i, at, len);
+			break;
+		}
+		i++;
+	}
+	
     return 0;
 }
 
 int on_header_value(http_parser *parser, const char *at, size_t len)
 {
-	printf("Header value: %.*s\n", (int)len, at);
+	int i = 0;
+	struct emn_client *cli = (struct emn_client *)parser->data;
+	struct http_message *hm = (struct http_message *)cli->data;
+	struct emn_str *header_values = hm->header_values;
+	
+	while (i < EMN_MAX_HTTP_HEADERS) {
+		if (header_values[i].len == 0) {
+			emn_str_init(header_values + i, at, len);
+			break;
+		}
+		i++;
+	}
     return 0;
-}
-
-int on_headers_complete(http_parser *parser)
-{
-	printf("\n***HEADERS COMPLETE***\n\n");
-	return 0;
 }
 
 int on_body(http_parser *parser, const char *at, size_t len)
 {
-	printf("Body: %.*s\n", (int)len, at);
+	struct emn_client *cli = (struct emn_client *)parser->data;
+	struct http_message *hm = (struct http_message *)cli->data;
+	emn_str_init(&hm->body, at, len);
     return 0;
 }
 
 int on_message_complete(http_parser *parser)
 {
+	struct emn_client *cli = (struct emn_client *)parser->data;
+	struct http_message *hm = (struct http_message *)cli->data;
+#if 0
+	int i = 0;
 	printf("\n***MESSAGE COMPLETE***\n\n");
+	printf("method: %s\n", http_method_str(parser->method));
+	printf("uri: %.*s\n", (int)hm->uri.len, hm->uri.p);
+	printf("proto: %d.%d\n", parser->http_major, parser->http_minor);
+
+	while (i < EMN_MAX_HTTP_HEADERS) {
+		if (hm->header_names[i].len > 0 && hm->header_values[i].len > 0) {
+			printf("%.*s: %.*s\n", (int)hm->header_names[i].len, hm->header_names[i].p, 
+				(int)hm->header_values[i].len, hm->header_values[i].p);
+			i++;
+		} else {
+			break;
+		}
+	}
+
+	printf("body:%.*s\n", (int)hm->body.len, hm->body.p);
+#endif
+	emn_call(cli, EMN_EV_HTTP_REQUEST, hm);
+	
 	return 0;
 }
 
@@ -176,10 +273,13 @@ static http_parser_settings parser_settings =
 	.on_url              = on_url,
 	.on_header_field     = on_header_field,
 	.on_header_value     = on_header_value,
-	.on_headers_complete = on_headers_complete,
 	.on_body             = on_body,
 	.on_message_complete = on_message_complete
 };
+
+void emn_serve_http(struct emn_client *cli)
+{
+}
 
 static void emn_http_handler(struct emn_client *cli, int event, void *data)
 {
@@ -187,7 +287,8 @@ static void emn_http_handler(struct emn_client *cli, int event, void *data)
 
 	if (event == EMN_EV_RECV) {
 		size_t nparsed;
-		nparsed = http_parser_execute((http_parser *)cli->data, &parser_settings, cli->rbuf.buf, cli->rbuf.len);
+		struct http_message *hm = (struct http_message *)cli->data;
+		nparsed = http_parser_execute(&hm->parser, &parser_settings, cli->rbuf.buf, cli->rbuf.len);
 		printf("nparsed = %zu\n", nparsed);
 	}
 }

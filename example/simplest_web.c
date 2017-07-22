@@ -16,10 +16,27 @@ void event_handler(struct emn_client *cli, int event, void *data)
         	break;
     	}
 	case EMN_EV_RECV: {
+#if 0
 			struct ebuf *rbuf = emn_get_rbuf(cli);
 			int len = *(int *)data;
 			printf("recv %d: [%.*s]\n", len, (int)rbuf->len, rbuf->buf);
 			//ebuf_remove(rbuf, len);
+#endif			
+			break;
+		}
+	case EMN_EV_HTTP_REQUEST: {
+			enum http_method method = emn_get_http_method(cli);
+			struct emn_str *uri = emn_get_http_uri(cli);
+			struct emn_str *host = emn_get_http_header(cli, "host");
+			struct emn_str *body = emn_get_http_body(cli);
+			
+			printf("method: %s\n", http_method_str(method));
+			printf("uri: %.*s\n", (int)uri->len, uri->p);
+			printf("proto: %d.%d\n", emn_get_http_version_major(cli), emn_get_http_version_minor(cli));
+			printf("Host: %.*s\n", (int)host->len, host->p);
+			printf("body: %.*s\n", (int)body->len, body->p);
+
+			emn_serve_http(cli);
 			break;
 		}
 	case EMN_EV_CLOSE: {

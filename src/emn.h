@@ -26,6 +26,12 @@
 #define EMN_EV_CLOSE	5   /* Connection is closed. NULL */
 #define EMN_EV_TIMER	6   /* now >= conn->ev_timer_time. double * */
 
+/* HTTP and websocket events. void *ev_data is described in a comment. */
+#define EMN_EV_HTTP_REQUEST	100	/* struct http_message * */
+#define EMN_EV_HTTP_REPLY	101	/* struct http_message * */
+#define EMN_EV_HTTP_CHUNK	102	/* struct http_message * */
+
+
 #define EMN_FLAGS_HTTP	(1 << 0)
 
 struct emn_object;
@@ -38,6 +44,8 @@ struct emn_str {
 	size_t len;    /* Memory chunk length */
 };
 
+void emn_str_init(struct emn_str *str, const char *at, size_t len);
+
 typedef void (*emn_event_handler_t)(struct emn_client *cli, int event, void *data);
 								   
 struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler);
@@ -48,5 +56,14 @@ void emn_set_protocol_http(struct emn_server *srv);
 
 struct ebuf *emn_get_rbuf(struct emn_client *cli);
 struct ebuf *emn_get_sbuf(struct emn_client *cli);
+
+enum http_method emn_get_http_method(struct emn_client *cli);
+struct emn_str *emn_get_http_uri(struct emn_client *cli);
+uint8_t emn_get_http_version_major(struct emn_client *cli);
+uint8_t emn_get_http_version_minor(struct emn_client *cli);
+struct emn_str *emn_get_http_header(struct emn_client *cli, const char *name);
+struct emn_str *emn_get_http_body(struct emn_client *cli);
+
+void emn_serve_http(struct emn_client *cli);
 
 #endif
