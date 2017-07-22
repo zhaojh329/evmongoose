@@ -35,8 +35,8 @@
 #define EMN_FLAGS_HTTP	(1 << 0)
 
 /* Flags that are settable by user */
-#define EMN_FLAGS_SEND_AND_CLOSE	(1 << 10)	/* Push remaining data and close  */
-#define EMN_FLAGS_CLOSE_IMMEDIATELY (1 << 11)	/* Disconnect */
+#define EMN_FLAGS_SEND_AND_CLOSE	(1 << 1)	/* Push remaining data and close  */
+#define EMN_FLAGS_CLOSE_IMMEDIATELY (1 << 2)	/* Disconnect */
 
 struct emn_server;
 struct emn_client;
