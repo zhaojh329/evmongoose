@@ -12,7 +12,7 @@ int event_handler(struct emn_client *cli, int event, void *data)
 	switch (event) {
     case EMN_EV_ACCEPT: {
 			struct sockaddr_in *sin = (struct sockaddr_in *)data;
-	        printf("%p: new conn from %s:%d\n", cli, inet_ntoa(sin->sin_addr), ntohs(sin->sin_port));
+	        printf("new conn from %s:%d\n", inet_ntoa(sin->sin_addr), ntohs(sin->sin_port));
         	break;
     	}
 	case EMN_EV_RECV: {
@@ -60,6 +60,8 @@ int main(int argc, char **argv)
 	ev_signal sig_watcher;
 	struct emn_server *srv = NULL;
 	const char *address = "8000";
+
+	openlog(NULL, LOG_PERROR | LOG_PID, 0);
 	
 	printf("emn version: %d.%d\n", EMN_VERSION_MAJOR, EMN_VERSION_MINOR);
 	
@@ -73,7 +75,7 @@ int main(int argc, char **argv)
 	}
 	
 	emn_set_protocol_http(srv, NULL);
-	printf("%p: listen on: %s\n", srv, address);
+	printf("listen on: %s\n", address);
 	
 	ev_run(loop, 0);
 

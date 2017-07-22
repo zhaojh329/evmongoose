@@ -1,52 +1,58 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <arpa/inet.h>
 #include "emn_utils.h"
 
-/*
- * Address format: [PROTO://][HOST]:PORT
- *
- * HOST could be IPv4/IPv6 address or a host name.
- * `host` is a destination buffer to hold parsed HOST part.
- * `proto` is a returned socket type, either SOCK_STREAM or SOCK_DGRAM
- *
- * Return:
- *   -1   on parse error
- *    0   if HOST needs DNS lookup
- *   >0   length of the address string
- */
-int parse_address(const char *str, struct sockaddr_in *sin, int *proto)
+int emn_parse_address(const char *address, struct sockaddr_in *sin, int *proto)
 {
-	unsigned int a, b, c, d, port = 0;
-	int len = 0;
+	const char *str;
+	char *p;
+	char host[16] = "";
+	uint16_t port = 0;
 
+	assert(address);
+	
 	memset(sin, 0, sizeof(struct sockaddr_in));
+	
 	sin->sin_family = AF_INET;
-
 	*proto = SOCK_STREAM;
-
+	str = address;
+	
 	if (strncmp(str, "udp://", 6) == 0) {
 		str += 6;
 		*proto = SOCK_DGRAM;
 	} else if (strncmp(str, "tcp://", 6) == 0) {
 		str += 6;
 	}
-	
-	if (sscanf(str, "%u.%u.%u.%u:%u%n", &a, &b, &c, &d, &port, &len) == 5) {
-		/* Bind to a specific IPv4 address, e.g. 192.168.1.1:8080 */
-		sin->sin_addr.s_addr = htonl(((uint32_t)a << 24) | ((uint32_t)b << 16) | c << 8 | d);
-		sin->sin_port = htons((uint16_t)port);
-	} else if (sscanf(str, "%u%n", &port, &len) == 1) {
-		/* If only port is specified, bind to IPv4, INADDR_ANY */
-		sin->sin_port = htons((uint16_t)port);
-	} else {
-		return -1;
+
+	p = strchr(str, ':');
+	if (p) {
+		if (p - str > 15)
+			return -1;
+		
+		memcpy(host, str, p - str);
+
+		if (strcmp(host, "*")) {	
+			if (inet_pton(AF_INET, host, &sin->sin_addr) <= 0)
+				return -1;
+		}
+		str = p + 1;
 	}
+
+	port = atoi(str);
+	if (port <= 0)
+		return -1;
+
+	sin->sin_port = htons(port);
 	
-	return len;
+	return 0;
 }
 
-int open_listening_socket(struct sockaddr_in *sin, int type, int proto)
+
+int emn_open_listening_socket(struct sockaddr_in *sin, int type, int proto)
 {
 	int sock = -1;
 	int on = 1;
