@@ -124,14 +124,16 @@ int emn_printf(struct emn_client *cli, const char *fmt, ...)
 {
 	int len;
 	va_list ap;
-	char buf[1024] = "";
+	char *str = NULL;
 	
 	va_start(ap, fmt);
-	len = vsnprintf(buf, sizeof(buf), fmt, ap);
+	len = vasprintf(&str, fmt, ap);
 	va_end(ap);
 
-	emn_send(cli, buf, len);
-	
+	if (len > 0) {
+		emn_send(cli, str, len);
+		free(str);
+	}
 	return len;
 }
 
