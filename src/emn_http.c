@@ -207,13 +207,10 @@ static void send_http_file(struct emn_client *cli, struct http_message *hm)
 				"Content-Type: %s\r\n"
 				"Content-Length: %zu\r\n"
 				"Connection: %s\r\n"
-				"\r\n",
-					date, last_modified, etag, get_mime_type(&hm->path, "text/plain"),
-					st.st_size, http_should_keep_alive(&hm->parser) ? "keep-alive" : "close"
-              );
+				"\r\n", date, last_modified, etag, get_mime_type(&hm->path, "text/plain"),
+					st.st_size, http_should_keep_alive(&hm->parser) ? "keep-alive" : "close");
 
 		cli->send_fd = send_fd;
-		
 		if (hm->parser.method == HTTP_HEAD) {
 			close(send_fd);
 			cli->send_fd = -1;
@@ -255,7 +252,6 @@ static int on_message_begin(http_parser *parser)
 	
 	emn_str_init(&hm->url, NULL, 0);
 	emn_str_init(&hm->body, NULL, 0);
-
 	
 	for (i = 0; i < hm->nheader; i++) {
 		emn_str_init(header_names + i, NULL, 0);
@@ -263,9 +259,7 @@ static int on_message_begin(http_parser *parser)
 	}
 	
 	hm->nheader = 0;
-
 	ebuf_remove(&cli->rbuf, cli->rbuf.len);
-		
 	return 0;
 }
 
