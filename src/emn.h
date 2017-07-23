@@ -53,15 +53,6 @@ void emn_send(struct emn_client *cli, const void *buf, int len);
 struct ebuf *emn_get_rbuf(struct emn_client *cli);
 struct ebuf *emn_get_sbuf(struct emn_client *cli);
 
-void emn_sever_set_proto_handler(struct emn_server *srv, emn_event_handler_t proto_handler);
-void emn_sever_set_flags(struct emn_server *srv, uint16_t flags);
-void emn_sever_set_opts(struct emn_server *srv, void *opts);
-void *emn_server_get_opts(struct emn_server *srv);
 void emn_client_set_flags(struct emn_client *cli, uint16_t flags);
-void emn_client_set_send_fd(struct emn_client *cli, int fd);
-void emn_client_set_data(struct emn_client *cli, void *data);
-void *emn_client_get_data(struct emn_client *cli);
-struct emn_server *emn_client_get_server(struct emn_client *cli);
-emn_event_handler_t emn_client_get_handler(struct emn_client *cli);
 
 #endif

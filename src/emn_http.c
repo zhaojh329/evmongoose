@@ -1,5 +1,6 @@
 #include "emn_http.h"
 #include "emn.h"
+#include "emn_internal.h"
 #include <errno.h>
 
 /* HTTP message */
@@ -20,14 +21,14 @@ struct http_message {
 
 static void emn_send_http_file(struct emn_client *cli)
 {
-	struct emn_server *srv = emn_client_get_server(cli);
-	struct http_opts *opts = (struct http_opts *)emn_server_get_opts(srv);
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct emn_server *srv = cli->srv;
+	struct http_opts *opts = (struct http_opts *)srv->opts;
+	struct http_message *hm = (struct http_message *)cli->data;
 	const char *document_root = opts ? (opts->document_root ? opts->document_root : ".") : ".";
 	char *local_path = calloc(1, strlen(document_root) + hm->path.len + 1);
 	int code = 200;
 	int send_fd = -1;
-	struct ebuf *rbuf = emn_get_rbuf(cli);
+	struct ebuf *rbuf = &cli->rbuf;
 	
 	strcpy(local_path, document_root);
 	memcpy(local_path + strlen(document_root), hm->path.p, hm->path.len);
@@ -65,7 +66,7 @@ static void emn_send_http_file(struct emn_client *cli)
               "\r\n",
               st.st_size, http_should_keep_alive(&hm->parser) ? "keep-alive" : "close"
               );
-		emn_client_set_send_fd(cli, send_fd);
+		cli->send_fd = send_fd;
 	}
 
 	if (code != 200)
@@ -85,7 +86,7 @@ static void emn_serve_http(struct emn_client *cli)
 static int on_url(http_parser *parser, const char *at, size_t len)
 {	
 	struct emn_client *cli = (struct emn_client *)parser->data;
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	struct http_parser_url url;
 
 	emn_str_init(&hm->url, at, len);
@@ -107,7 +108,7 @@ static int on_header_field(http_parser *parser, const char *at, size_t len)
 {
 	int i = 0;
 	struct emn_client *cli = (struct emn_client *)parser->data;
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	struct emn_str *header_names = hm->header_names;
 	
 	while (i < EMN_MAX_HTTP_HEADERS) {
@@ -125,7 +126,7 @@ static int on_header_value(http_parser *parser, const char *at, size_t len)
 {
 	int i = 0;
 	struct emn_client *cli = (struct emn_client *)parser->data;
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	struct emn_str *header_values = hm->header_values;
 	
 	while (i < EMN_MAX_HTTP_HEADERS) {
@@ -141,7 +142,7 @@ static int on_header_value(http_parser *parser, const char *at, size_t len)
 static int on_body(http_parser *parser, const char *at, size_t len)
 {
 	struct emn_client *cli = (struct emn_client *)parser->data;
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	emn_str_init(&hm->body, at, len);
     return 0;
 }
@@ -149,7 +150,7 @@ static int on_body(http_parser *parser, const char *at, size_t len)
 static int on_message_complete(http_parser *parser)
 {
 	struct emn_client *cli = (struct emn_client *)parser->data;
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 #if 0
 	int i = 0;
 	printf("\n***MESSAGE COMPLETE***\n\n");
@@ -171,7 +172,7 @@ static int on_message_complete(http_parser *parser)
 #endif
 
 	if (!http_should_keep_alive(&hm->parser))
-		emn_client_set_flags(cli, EMN_FLAGS_SEND_AND_CLOSE);
+		cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
 		
 	if (!emn_call(cli, NULL, EMN_EV_HTTP_REQUEST, hm))
 		emn_serve_http(cli);
@@ -193,15 +194,15 @@ static int emn_http_handler(struct emn_client *cli, int event, void *data)
 		struct http_message *hm = calloc(1, sizeof(struct http_message));
 		http_parser_init(&hm->parser, HTTP_REQUEST);
 		hm->parser.data = cli;
-		emn_client_set_data(cli, (void *)hm);
+		cli->data = hm;
 	}
 
-	emn_call(cli, emn_client_get_handler(cli), event, data);
+	emn_call(cli, cli->handler, event, data);
 
 	if (event == EMN_EV_RECV) {
 		size_t nparsed;
-		struct ebuf *rbuf = emn_get_rbuf(cli);
-		struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+		struct ebuf *rbuf = &cli->rbuf;
+		struct http_message *hm = (struct http_message *)cli->data;
 		
 		nparsed = http_parser_execute(&hm->parser, &parser_settings, rbuf->buf, rbuf->len);
 		printf("nparsed = %zu\n", nparsed);
@@ -212,44 +213,44 @@ static int emn_http_handler(struct emn_client *cli, int event, void *data)
 
 inline enum http_method emn_get_http_method(struct emn_client *cli)
 {
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	return hm->parser.method;
 }
 
 inline struct emn_str *emn_get_http_url(struct emn_client *cli)
 {
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	return &hm->url;
 }
 
 inline struct emn_str *emn_get_http_path(struct emn_client *cli)
 {
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	return &hm->path;
 }
 
 inline struct emn_str *emn_get_http_query(struct emn_client *cli)
 {
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	return &hm->query;
 }
 
 inline uint8_t emn_get_http_version_major(struct emn_client *cli)
 {
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	return hm->parser.http_major;
 }
 
 inline uint8_t emn_get_http_version_minor(struct emn_client *cli)
 {
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	return hm->parser.http_minor;
 }
 
 inline struct emn_str *emn_get_http_header(struct emn_client *cli, const char *name)
 {
 	int i = 0;
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	struct emn_str *header_names = hm->header_names;
 	struct emn_str *header_values = hm->header_values;
 	while (i < EMN_MAX_HTTP_HEADERS) {
@@ -264,7 +265,7 @@ inline struct emn_str *emn_get_http_header(struct emn_client *cli, const char *n
 
 inline struct emn_str *emn_get_http_body(struct emn_client *cli)
 {
-	struct http_message *hm = (struct http_message *)emn_client_get_data(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
 	return &hm->body;
 }
 
@@ -323,13 +324,13 @@ void emn_send_http_error(struct emn_client *cli, int code, const char *reason)
 
 	emn_send_http_head(cli, code, strlen(reason), "Content-Type: text/plain\r\nConnection: close");
 	emn_send(cli, reason, strlen(reason));
-	emn_client_set_flags(cli, EMN_FLAGS_SEND_AND_CLOSE);
+	cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
 }
 
 void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts)
 {
-	emn_sever_set_proto_handler(srv, emn_http_handler);
-	emn_sever_set_flags(srv, EMN_FLAGS_HTTP);
-	emn_sever_set_opts(srv, (void *)opts);
+	srv->proto_handler = emn_http_handler;
+	srv->flags |= EMN_FLAGS_HTTP;
+	srv->opts = opts;
 }
 
