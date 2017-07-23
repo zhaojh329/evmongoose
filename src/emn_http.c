@@ -204,7 +204,7 @@ static void emn_send_http_file(struct emn_client *cli, struct http_message *hm)
 		emn_time2gmt(last_modified, sizeof(last_modified), st.st_mtime);
 		emh_http_construct_etag(etag, sizeof(etag), &st);
 		
-		emn_send_http_response_line(cli, code, NULL);
+		emn_send_http_status_line(cli, code);
     	emn_printf(cli,
 				"Date: %s\r\n"
 				"Last-Modified: %s\r\n"
@@ -473,21 +473,23 @@ inline struct emn_str *emn_get_http_body(struct emn_client *cli)
 	return &hm->body;
 }
 
-void emn_send_http_response_line(struct emn_client *cli, int code, const char *extra_headers)
+void emn_send_http_status_line(struct emn_client *cli, int code)
 {
-	emn_printf(cli, "HTTP/1.1 %d %s\r\nServer: Emn %d.%d\r\n", code, emn_http_status_message(code), 
-		EMN_VERSION_MAJOR, EMN_VERSION_MINOR);
-	if (extra_headers)
-		emn_printf(cli, "%s\r\n", extra_headers);
+	emn_printf(cli, "HTTP/1.1 %d %s\r\nServer: Emn %d.%d\r\n",
+		code, emn_http_status_message(code), EMN_VERSION_MAJOR, EMN_VERSION_MINOR);
 }
 
 void emn_send_http_head(struct emn_client *cli, int code, ssize_t content_length, const char *extra_headers)
 {
-	emn_send_http_response_line(cli, code, extra_headers);
+	emn_send_http_status_line(cli, code);
 	if (content_length < 0)
 		emn_printf(cli, "%s", "Transfer-Encoding: chunked\r\n");
 	else
 		emn_printf(cli, "Content-Length: %zd\r\n", content_length);
+
+	if (extra_headers) 
+		emn_send(cli, extra_headers, strlen(extra_headers));
+
 	emn_send(cli, "\r\n", 2);
 }
 
@@ -516,7 +518,9 @@ void emn_send_http_redirect(struct emn_client *cli, int code, const char *locati
 		"Cache-Control: no-cache\r\n",
 		location, strlen(body));
 
-	emn_send_http_response_line(cli, code, head);
+	emn_send_http_status_line(cli, code);
+	emn_send(cli, head, strlen(head));
+	emn_send(cli, "\r\n", 2);
 	emn_send(cli, body, strlen(body));
 }
 
