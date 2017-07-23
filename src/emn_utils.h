@@ -1,6 +1,8 @@
 #ifndef __EMN_UTILS_H_
 #define __EMN_UTILS_H_
 
+#define _XOPEN_SOURCE
+
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -38,6 +40,7 @@ int emn_parse_address(const char *address, struct sockaddr_in *sin, int *proto);
 int emn_open_listening_socket(struct sockaddr_in *sin, int type, int proto);
 
 double emn_time();
-void emn_gmt_time_string(char *buf, size_t buf_len);
+void emn_gmt_time_string(char *buf, size_t buf_len, time_t t);
+time_t emn_parse_gmt_time(const char *datetime);
 
 #endif

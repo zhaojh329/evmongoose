@@ -41,6 +41,8 @@ static const char *emn_http_status_message(int code)
 		return "I'm a teapot";
 	case 500:
 		return "Internal Server Error";
+	case 501:
+      return "Not Implemented";
 	case 502:
 		return "Bad Gateway";
 	case 503:
@@ -50,11 +52,29 @@ static const char *emn_http_status_message(int code)
 	}
 }
 
-static void emn_send_http_file(struct emn_client *cli)
+static void emh_http_construct_etag(char *buf, size_t buf_len, struct stat *st)
+{
+	snprintf(buf, buf_len, "\"%zx.%zu\"", st->st_size, st->st_size);
+}
+
+static int emn_http_is_not_modified(struct emn_client *cli, struct stat *st)
+{
+	struct emn_str *hdr;
+	if ((hdr = emn_get_http_header(cli, "If-None-Match"))) {
+		char etag[64];
+		emh_http_construct_etag(etag, sizeof(etag), st);
+		return strncasecmp(hdr->p, etag, hdr->len) == 0;
+	} else if ((hdr = emn_get_http_header(cli, "If-Modified-Since"))) {
+		return st->st_mtime <= emn_parse_gmt_time(hdr->p);
+	} else {
+		return 0;
+	}
+}
+
+static void emn_send_http_file(struct emn_client *cli, struct http_message *hm)
 {
 	struct emn_server *srv = cli->srv;
 	struct http_opts *opts = (struct http_opts *)srv->opts;
-	struct http_message *hm = (struct http_message *)cli->data;
 	const char *document_root = opts ? (opts->document_root ? opts->document_root : ".") : ".";
 	const char *index_files = opts ? (opts->index_files ? opts->index_files : "/index.html") : "/index.html";
 	char *local_path = calloc(1, strlen(document_root) + hm->path.len + 1);
@@ -85,6 +105,9 @@ static void emn_send_http_file(struct emn_client *cli)
 
 	if (send_fd > 0) {
 		char date[50] = "";
+		char last_modified[50] = "";
+		char etag[50] = "";
+		time_t t = time(NULL);
 		struct stat st;
 		
 		fstat(send_fd, &st);
@@ -95,15 +118,26 @@ static void emn_send_http_file(struct emn_client *cli)
 			goto end;
 		}
 
-		emn_gmt_time_string(date, sizeof(date));
+		if (emn_http_is_not_modified(cli, &st)) {
+			emn_send_http_error(cli, 304, NULL);
+			goto end;
+		}
+
+		emn_gmt_time_string(date, sizeof(date), t);
+		emn_gmt_time_string(last_modified, sizeof(last_modified), st.st_mtime);
+		emh_http_construct_etag(etag, sizeof(etag), &st);
+		
 		emn_send_http_response_line(cli, code, NULL);
     	emn_printf(cli,
 				"Date: %s\r\n"
+				"Last-Modified: %s\r\n"
+				"Etag: %s\r\n"
 				"Content-Type: text/html\r\n"
 				"Content-Length: %zu\r\n"
 				"Connection: %s\r\n"
 				"\r\n",
-					date, st.st_size, http_should_keep_alive(&hm->parser) ? "keep-alive" : "close"
+					date, last_modified, etag,
+					st.st_size, http_should_keep_alive(&hm->parser) ? "keep-alive" : "close"
               );
 		cli->send_fd = send_fd;
 	}
@@ -117,7 +151,16 @@ end:
 
 static void emn_serve_http(struct emn_client *cli)
 {
-	emn_send_http_file(cli);
+	struct http_message *hm = (struct http_message *)cli->data;
+
+	switch (hm->parser.method) {
+	case HTTP_GET:
+	case HTTP_POST:
+		emn_send_http_file(cli, hm);
+		break;
+	default:
+		emn_send_http_error(cli, 501, NULL);
+	}
 }
 
 static int on_message_begin(http_parser *parser)

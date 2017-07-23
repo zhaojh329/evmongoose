@@ -98,9 +98,17 @@ double emn_time()
 	return (double)tv.tv_sec + (((double) tv.tv_usec) / 1000000.0);
 }
 
-void emn_gmt_time_string(char *buf, size_t buf_len)
+void emn_gmt_time_string(char *buf, size_t buf_len, time_t t)
 {
-	time_t t = time(NULL);
 	strftime(buf, buf_len, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&t));
+}
+
+/* Parse UTC date-time string, and return the corresponding time_t value. */
+time_t emn_parse_gmt_time(const char *datetime)
+{
+	struct tm tm;
+	strptime(datetime, "%a, %d %b %Y %H:%M:%S GMT", &tm);
+
+	return mktime(&tm);
 }
 
