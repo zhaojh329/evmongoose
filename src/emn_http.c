@@ -12,6 +12,7 @@ struct http_message {
 	struct emn_str query;
 
 	/* Headers */
+	uint8_t nheader;	/* Number of headers */
 	struct emn_str header_names[EMN_MAX_HTTP_HEADERS];
 	struct emn_str header_values[EMN_MAX_HTTP_HEADERS];
 
@@ -98,37 +99,42 @@ static int on_url(http_parser *parser, const char *at, size_t len)
 
 static int on_header_field(http_parser *parser, const char *at, size_t len)
 {
-	int i = 0;
 	struct emn_client *cli = (struct emn_client *)parser->data;
 	struct http_message *hm = (struct http_message *)cli->data;
 	struct emn_str *header_names = hm->header_names;
-	
-	while (i < EMN_MAX_HTTP_HEADERS) {
-		if (header_names[i].len == 0) {
-			emn_str_init(header_names + i, at, len);
-			break;
-		}
-		i++;
+
+	if (at[-1] == '\n') {
+		if (hm->nheader == EMN_MAX_HTTP_HEADERS)
+			return -1;
+		(hm->nheader)++;
 	}
+
+	if (header_names[hm->nheader - 1].p)
+		emn_str_increase(&header_names[hm->nheader - 1], len);
+	else
+		emn_str_init(&header_names[hm->nheader - 1], at, len);
 	
     return 0;
 }
 
 static int on_header_value(http_parser *parser, const char *at, size_t len)
 {
-	int i = 0;
 	struct emn_client *cli = (struct emn_client *)parser->data;
 	struct http_message *hm = (struct http_message *)cli->data;
 	struct emn_str *header_values = hm->header_values;
 	
-	while (i < EMN_MAX_HTTP_HEADERS) {
-		if (header_values[i].len == 0) {
-			emn_str_init(header_values + i, at, len);
-			break;
-		}
-		i++;
+	if (header_values[hm->nheader - 1].p)
+		emn_str_increase(&header_values[hm->nheader - 1], len);
+	else {
+		emn_str_init(&header_values[hm->nheader - 1], at, len);
 	}
+
     return 0;
+}
+
+static int on_headers_complete(http_parser *parser)
+{
+	return 0;
 }
 
 static int on_body(http_parser *parser, const char *at, size_t len)
@@ -149,11 +155,10 @@ static int on_message_complete(http_parser *parser)
 	struct emn_client *cli = (struct emn_client *)parser->data;
 	struct http_message *hm = (struct http_message *)cli->data;
 	struct http_parser_url url;
-#if 1
-	printf("url: %.*s\n", (int)hm->url.len, hm->url.p);
+
 	if (http_parser_parse_url(hm->url.p, hm->url.len, 0, &url)) {
+		emn_log(LOG_ERR, "invalid url");
 		emn_send_http_error(cli, 400, NULL);
-		printf("on url error\n");
 		return 0;
 	} else {
 		if (url.field_set & (1 << UF_PATH))
@@ -162,26 +167,6 @@ static int on_message_complete(http_parser *parser)
 		if (url.field_set & (1 << UF_QUERY))
 			emn_str_init(&hm->query, hm->url.p + url.field_data[UF_QUERY].off, url.field_data[UF_QUERY].len);
 	}
-#endif	
-#if 0
-	int i = 0;
-	printf("\n***MESSAGE COMPLETE***\n\n");
-	printf("method: %s\n", http_method_str(parser->method));
-	printf("uri: %.*s\n", (int)hm->uri.len, hm->uri.p);
-	printf("proto: %d.%d\n", parser->http_major, parser->http_minor);
-
-	while (i < EMN_MAX_HTTP_HEADERS) {
-		if (hm->header_names[i].len > 0 && hm->header_values[i].len > 0) {
-			printf("%.*s: %.*s\n", (int)hm->header_names[i].len, hm->header_names[i].p, 
-				(int)hm->header_values[i].len, hm->header_values[i].p);
-			i++;
-		} else {
-			break;
-		}
-	}
-
-	printf("body:%.*s\n", (int)hm->body.len, hm->body.p);
-#endif
 
 	if (!http_should_keep_alive(&hm->parser))
 		cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
@@ -196,6 +181,7 @@ static http_parser_settings parser_settings = {
 	.on_url              = on_url,
 	.on_header_field     = on_header_field,
 	.on_header_value     = on_header_value,
+	.on_headers_complete = on_headers_complete,
 	.on_body             = on_body,
 	.on_message_complete = on_message_complete
 };
@@ -218,10 +204,10 @@ static int emn_http_handler(struct emn_client *cli, int event, void *data)
 		struct http_message *hm = (struct http_message *)cli->data;
 		
 		nparsed = http_parser_execute(&hm->parser, &parser_settings, rbuf->buf + rbuf->len - len, len);
-		printf("nparsed = %zu\n", nparsed);
-
-		if (HTTP_PARSER_ERRNO(&hm->parser))
-			printf("%s\n", http_errno_description(HTTP_PARSER_ERRNO(&hm->parser)));
+		if (nparsed != len) {
+			emn_log(LOG_ERR, "%s", http_errno_description(HTTP_PARSER_ERRNO(&hm->parser)));
+			emn_send_http_error(cli, 400, NULL);			
+		}
 	}
 	
 	return 0;
