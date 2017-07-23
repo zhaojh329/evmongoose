@@ -87,20 +87,12 @@ static int on_url(http_parser *parser, const char *at, size_t len)
 {	
 	struct emn_client *cli = (struct emn_client *)parser->data;
 	struct http_message *hm = (struct http_message *)cli->data;
-	struct http_parser_url url;
 
-	emn_str_init(&hm->url, at, len);
+	if (hm->url.p)
+		emn_str_increase(&hm->url, len);
+	else
+		emn_str_init(&hm->url, at, len);
 	
-	if (http_parser_parse_url(at, len, 0, &url))
-		printf("http_parser_parse_url failed\n");
-	else {
-		if (url.field_set & (1 << UF_PATH))
-			emn_str_init(&hm->path, at + url.field_data[UF_PATH].off, url.field_data[UF_PATH].len);
-
-		if (url.field_set & (1 << UF_QUERY))
-			emn_str_init(&hm->query, at + url.field_data[UF_QUERY].off, url.field_data[UF_QUERY].len);
-	}
-		
     return 0;
 }
 
@@ -143,7 +135,12 @@ static int on_body(http_parser *parser, const char *at, size_t len)
 {
 	struct emn_client *cli = (struct emn_client *)parser->data;
 	struct http_message *hm = (struct http_message *)cli->data;
-	emn_str_init(&hm->body, at, len);
+
+	if (hm->body.p)
+		emn_str_increase(&hm->body, len);
+	else
+		emn_str_init(&hm->body, at, len);
+	
     return 0;
 }
 
@@ -151,6 +148,21 @@ static int on_message_complete(http_parser *parser)
 {
 	struct emn_client *cli = (struct emn_client *)parser->data;
 	struct http_message *hm = (struct http_message *)cli->data;
+	struct http_parser_url url;
+#if 1
+	printf("url: %.*s\n", (int)hm->url.len, hm->url.p);
+	if (http_parser_parse_url(hm->url.p, hm->url.len, 0, &url)) {
+		emn_send_http_error(cli, 400, NULL);
+		printf("on url error\n");
+		return 0;
+	} else {
+		if (url.field_set & (1 << UF_PATH))
+			emn_str_init(&hm->path, hm->url.p + url.field_data[UF_PATH].off, url.field_data[UF_PATH].len);
+
+		if (url.field_set & (1 << UF_QUERY))
+			emn_str_init(&hm->query, hm->url.p + url.field_data[UF_QUERY].off, url.field_data[UF_QUERY].len);
+	}
+#endif	
 #if 0
 	int i = 0;
 	printf("\n***MESSAGE COMPLETE***\n\n");
@@ -201,11 +213,15 @@ static int emn_http_handler(struct emn_client *cli, int event, void *data)
 
 	if (event == EMN_EV_RECV) {
 		size_t nparsed;
+		int len = *(int *)data;
 		struct ebuf *rbuf = &cli->rbuf;
 		struct http_message *hm = (struct http_message *)cli->data;
 		
-		nparsed = http_parser_execute(&hm->parser, &parser_settings, rbuf->buf, rbuf->len);
+		nparsed = http_parser_execute(&hm->parser, &parser_settings, rbuf->buf + rbuf->len - len, len);
 		printf("nparsed = %zu\n", nparsed);
+
+		if (HTTP_PARSER_ERRNO(&hm->parser))
+			printf("%s\n", http_errno_description(HTTP_PARSER_ERRNO(&hm->parser)));
 	}
 	
 	return 0;

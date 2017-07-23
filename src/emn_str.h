@@ -10,7 +10,12 @@ struct emn_str {
 static inline void emn_str_init(struct emn_str *str, const char *at, size_t len)
 {
 	str->p = at;
-	str-> len = len;
+	str->len = len;
+}
+
+static inline void emn_str_increase(struct emn_str *str, size_t len)
+{
+	str->len += len;
 }
 
 #endif
