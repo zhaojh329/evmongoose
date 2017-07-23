@@ -1,1 +1,1 @@
-# Emn - Event based multi protocol network library
+# Emn - Event based multi protocol network library for Embedded Linux
