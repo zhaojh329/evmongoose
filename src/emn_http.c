@@ -527,3 +527,10 @@ void emn_send_http_redirect(struct emn_client *cli, int code, const char *locati
 		emn_send(cli, body, strlen(body));
 }
 
+void emn_send_http_chunk(struct emn_client *cli, const char *buf, size_t len)
+{
+	emn_printf(cli, "%zX\r\n", len);
+	emn_send(cli, buf, len);
+	emn_send(cli, "\r\n", 2);
+}
+
