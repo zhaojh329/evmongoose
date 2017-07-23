@@ -54,18 +54,19 @@ static const char *emn_http_status_message(int code)
 
 static void emh_http_construct_etag(char *buf, size_t buf_len, struct stat *st)
 {
-	snprintf(buf, buf_len, "\"%zx.%zu\"", st->st_size, st->st_size);
+	snprintf(buf, buf_len, "\"%zx.%zu\"", st->st_mtime, st->st_size);
 }
 
 static int emn_http_is_not_modified(struct emn_client *cli, struct stat *st)
 {
 	struct emn_str *hdr;
+	
 	if ((hdr = emn_get_http_header(cli, "If-None-Match"))) {
-		char etag[64];
+		char etag[64] = "";
 		emh_http_construct_etag(etag, sizeof(etag), st);
-		return strncasecmp(hdr->p, etag, hdr->len) == 0;
+		return emn_strvcasecmp(hdr, etag) == 0;
 	} else if ((hdr = emn_get_http_header(cli, "If-Modified-Since"))) {
-		return st->st_mtime <= emn_parse_gmt_time(hdr->p);
+		return st->st_mtime <= emn_gmt2time(hdr->p);
 	} else {
 		return 0;
 	}
@@ -123,8 +124,8 @@ static void emn_send_http_file(struct emn_client *cli, struct http_message *hm)
 			goto end;
 		}
 
-		emn_gmt_time_string(date, sizeof(date), t);
-		emn_gmt_time_string(last_modified, sizeof(last_modified), st.st_mtime);
+		emn_time2gmt(date, sizeof(date), t);
+		emn_time2gmt(last_modified, sizeof(last_modified), st.st_mtime);
 		emh_http_construct_etag(etag, sizeof(etag), &st);
 		
 		emn_send_http_response_line(cli, code, NULL);
@@ -380,8 +381,8 @@ inline struct emn_str *emn_get_http_header(struct emn_client *cli, const char *n
 	struct http_message *hm = (struct http_message *)cli->data;
 	struct emn_str *header_names = hm->header_names;
 	struct emn_str *header_values = hm->header_values;
-	while (i < EMN_MAX_HTTP_HEADERS) {
-		if (!strncasecmp(header_names[i].p, name, header_names[i].len)) {
+	while (i < hm->nheader) {
+		if (!emn_strvcasecmp(&header_names[i], name) && header_values[i].len > 0) {
 			return header_values + i;
 			break;
 		}

@@ -26,14 +26,16 @@ inline int emn_call(struct emn_client *cli, emn_event_handler_t handler, int eve
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
 	struct ebuf ebuf;
+	ssize_t len;
 	struct emn_client *cli = (struct emn_client *)w->data;
 
 	ebuf_init(&ebuf, EMN_RECV_BUFFER_SIZE);
 	
-	ebuf.len = read(w->fd, ebuf.buf, ebuf.size);
-	if (ebuf.len > 0) {
+	len = read(w->fd, ebuf.buf, ebuf.size);
+	if (len > 0) {
+		ebuf.len = len;
 		emn_call(cli, NULL, EMN_EV_RECV, &ebuf);
-	} else if (ebuf.len == 0) {
+	} else if (len == 0) {
 		/* Orderly shutdown of the socket, try flushing output. */
 		cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
 	} else {

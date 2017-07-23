@@ -1,6 +1,7 @@
 #include "emn.h"
 #include <stdio.h>
 
+#if 1
 static void signal_cb(struct ev_loop *loop, ev_signal *w, int revents)
 {
 	printf("Got signal: %d\n", w->signum);
@@ -82,6 +83,19 @@ int main(int argc, char **argv)
 err:	
 	emn_server_destroy(srv);
 	printf("Server exit...\n");
-		
+
 	return 0;
 }
+
+#else
+int main(int argc, char **argv)
+{
+
+	struct emn_str str1;
+
+	emn_str_init(&str1, "AB12", 4);
+
+	printf("%d\n", emn_strvcasecmp(&str1, "aB12"));
+}
+#endif
+

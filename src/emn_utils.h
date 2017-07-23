@@ -36,11 +36,23 @@ void  __emn_log(const char *filename, int line, int priority, const char *format
  *    0   parse ok
  #endif
 int emn_parse_address(const char *address, struct sockaddr_in *sin, int *proto);
+
  
 int emn_open_listening_socket(struct sockaddr_in *sin, int type, int proto);
 
+/* Gets the time of the current microsecond precision */
 double emn_time();
-void emn_gmt_time_string(char *buf, size_t buf_len, time_t t);
-time_t emn_parse_gmt_time(const char *datetime);
+
+/*
+ * Sun, 23 Jul 2017 08:19:18 GMT
+ * Converts the time of type time_t to a time string in GMT format
+ */
+void emn_time2gmt(char *buf, size_t buf_len, time_t t);
+
+/*
+ * Sun, 23 Jul 2017 08:19:18 GMT
+ * Converts a GMT formatted time string to the time_t type
+ */
+time_t emn_gmt2time(const char *datetime);
 
 #endif
