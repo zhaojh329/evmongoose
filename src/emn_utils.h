@@ -1,7 +1,16 @@
 #ifndef __EMN_UTILS_H_
 #define __EMN_UTILS_H_
 
+#include <syslog.h>
 #include <netinet/in.h>
+
+#define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+
+
+#define emn_log(priority, format...) __emn_log(__FILENAME__, __LINE__, priority, format)
+
+void  __emn_log(const char *filename, int line, int priority, const char *format, ...);
+
 
 #if 0
  * Address format: [PROTO://][HOST]:PORT

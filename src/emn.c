@@ -35,7 +35,7 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 	if (!buf) {
 		buf = malloc(EMN_TCP_RECV_BUFFER_SIZE);
 		if (!buf) {
-			syslog(LOG_ERR, "emn: can't alloc mem");
+			emn_log(LOG_ERR, "emn: can't alloc mem");
 			return;
 		}
 	}
@@ -96,7 +96,7 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	
 	sock = accept(w->fd, (struct sockaddr *)&sin, &sin_len);
 	if (sock < 0) {
-		syslog(LOG_ERR, "emn: accept failed:%s", strerror(errno));
+		emn_log(LOG_ERR, "emn: accept failed:%s", strerror(errno));
 		return;
 	}
 
@@ -151,13 +151,13 @@ struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event
 	int proto;
 	
 	if (emn_parse_address(address, &sin, &proto) < 0) {
-		syslog(LOG_ERR, "emn: can't parse address");
+		emn_log(LOG_ERR, "emn: can't parse address");
 		return NULL;
 	}
 
 	srv = calloc(1, sizeof(struct emn_server));
 	if (!srv) {
-		syslog(LOG_ERR, "emn: can't alloc mem");
+		emn_log(LOG_ERR, "emn: can't alloc mem");
 		return NULL;
 	}
 	
@@ -165,7 +165,7 @@ struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event
 	
 	srv->sock = emn_open_listening_socket(&sin, proto, 0);
 	if (srv->sock < 0) {
-		syslog(LOG_ERR, "emn: can't open listening_socket");
+		emn_log(LOG_ERR, "emn: can't open listening_socket");
 		emn_server_destroy(srv);
 		return NULL;
 	}

@@ -3,8 +3,23 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdarg.h>
 #include <arpa/inet.h>
 #include "emn_utils.h"
+
+void __emn_log(const char *filename, int line, int priority, const char *format, ...)
+{
+	va_list ap;
+	static char buf[128];
+
+	snprintf(buf, sizeof(buf), "(%s:%d) ", filename, line);
+	
+	va_start(ap, format);
+	vsnprintf(buf + strlen(buf), sizeof(buf) - strlen(buf), format, ap);
+	va_end(ap);
+
+	syslog(priority, "%s", buf);
+}
 
 int emn_parse_address(const char *address, struct sockaddr_in *sin, int *proto)
 {
