@@ -39,11 +39,15 @@ int event_handler(struct emn_client *cli, int event, void *data)
 			printf("path: %.*s\n", (int)path->len, path->p);
 			printf("query: %.*s\n", (int)query->len, query->p);
 			printf("proto: %d.%d\n", emn_get_http_version_major(cli), emn_get_http_version_minor(cli));
-			printf("Host: %.*s\n", (int)host->len, host->p);
+
+			if (host)
+				printf("Host: %.*s\n", (int)host->len, host->p);
 			printf("body: %.*s\n", (int)body->len, body->p);
 
-			emn_send_http_head(cli, 200, 10, NULL);
-			emn_printf(cli, "1234567890");
+			emn_send_http_head(cli, 200, -1, NULL);
+			emn_send_http_chunk(cli, "12", 2);
+			emn_send_http_chunk(cli, "345", 3);
+			emn_send_http_chunk(cli, NULL, 0);
 			return 1;
 #endif			
 			break;
