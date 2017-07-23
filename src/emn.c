@@ -43,9 +43,10 @@ inline struct ebuf *emn_get_sbuf(struct emn_client *cli)
 	return &cli->sbuf;
 }
 
-static inline int emn_call(struct emn_client *cli, int event, void *data)
+inline int emn_call(struct emn_client *cli, emn_event_handler_t handler, int event, void *data)
 {
-	emn_event_handler_t handler = cli->proto_handler ? cli->proto_handler : cli->handler;
+	if (!handler)
+		handler = cli->proto_handler ? cli->proto_handler : cli->handler;
 	
 	if (handler)
 		return handler(cli, event, data);
@@ -69,7 +70,7 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 	len = read(w->fd, buf, EMN_TCP_RECV_BUFFER_SIZE);
 	if (len > 0) {
 		ebuf_append(&cli->rbuf, buf, len);
-		emn_call(cli, EMN_EV_RECV, &len);
+		emn_call(cli, NULL, EMN_EV_RECV, &len);
 	} else if (len == 0) {
 		/* Orderly shutdown of the socket, try flushing output. */
 		cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
@@ -146,7 +147,7 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	ev_io_init(&cli->iow, ev_write_cb, sock, EV_WRITE);
 	cli->iow.data = cli;
 
-	emn_call(cli, EMN_EV_ACCEPT, &sin);
+	emn_call(cli, NULL, EMN_EV_ACCEPT, &sin);
 }
 
 void emn_send(struct emn_client *cli, const void *buf, int len)
@@ -176,7 +177,7 @@ struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event
 	struct emn_server *srv = NULL;
 	int proto;
 	
-	if (emn_parse_address(address, &sin, &proto) <= 0) {
+	if (emn_parse_address(address, &sin, &proto) < 0) {
 		syslog(LOG_ERR, "emn: can't parse address");
 		return NULL;
 	}
@@ -230,7 +231,7 @@ void emn_server_destroy(struct emn_server *srv)
 void emn_client_destroy(struct emn_client *cli)
 {
 	if (cli) {
-		emn_call(cli, EMN_EV_CLOSE, NULL);
+		emn_call(cli, NULL, EMN_EV_CLOSE, NULL);
 		
 		if (cli->sock > 0)
 			close(cli->sock);
@@ -268,9 +269,39 @@ void emn_sever_set_opts(struct emn_server *srv, void *opts)
 	srv->opts = opts;
 }
 
+void *emn_server_get_opts(struct emn_server *srv)
+{
+	return srv->opts;
+}
+
 void emn_client_set_flags(struct emn_client *cli, uint16_t flags)
 {
 	assert(cli);
 	cli->flags |= flags;
+}
+
+void emn_client_set_send_fd(struct emn_client *cli, int fd)
+{
+	cli->send_fd = fd;
+}
+
+void emn_client_set_data(struct emn_client *cli, void *data)
+{
+	cli->data = data;
+}
+
+void *emn_client_get_data(struct emn_client *cli)
+{
+	return cli->data;
+}
+
+struct emn_server *emn_client_get_server(struct emn_client *cli)
+{
+	return cli->srv;
+}
+
+emn_event_handler_t emn_client_get_handler(struct emn_client *cli)
+{
+	return cli->handler;
 }
 

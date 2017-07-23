@@ -21,6 +21,9 @@ struct http_opts {
 	const char *index_files;
 };
 
+struct emn_server;
+struct emn_client;
+
 void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts);
 
 enum http_method emn_get_http_method(struct emn_client *cli);
@@ -31,5 +34,9 @@ uint8_t emn_get_http_version_major(struct emn_client *cli);
 uint8_t emn_get_http_version_minor(struct emn_client *cli);
 struct emn_str *emn_get_http_header(struct emn_client *cli, const char *name);
 struct emn_str *emn_get_http_body(struct emn_client *cli);
+
+void emn_send_http_response_line(struct emn_client *cli, int code, const char *extra_headers);
+void emn_send_http_head(struct emn_client *cli, int code, ssize_t content_length, const char *extra_headers);
+void emn_send_http_error(struct emn_client *cli, int code, const char *reason);
 
 #endif
