@@ -28,6 +28,7 @@ struct emn_client {
 	struct ebuf rbuf;	/* recv buf */
 	struct ebuf sbuf;	/* send buf */
 	void *data;			/* Pointing to protocol related structures */
+	ev_timer timer;
 	struct emn_server *srv;
 	struct list_head list;
 };

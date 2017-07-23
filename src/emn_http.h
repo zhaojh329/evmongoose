@@ -4,9 +4,11 @@
 #include <http_parser.h>
 #include "emn.h"
 
-#define EMN_FLAGS_HTTP				(1 << 0)
+#define EMN_FLAGS_HTTP			(1 << 0)
 
-#define EMN_MAX_HTTP_HEADERS		40
+#define EMN_MAX_HTTP_HEADERS	40
+
+#define EMN_HTTP_TIMEOUT		10
 
 /* HTTP and websocket events. void *ev_data is described in a comment. */
 #define EMN_EV_HTTP_REQUEST	100	/* struct http_message * */

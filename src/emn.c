@@ -206,6 +206,7 @@ void emn_client_destroy(struct emn_client *cli)
 		
 		ev_io_stop(cli->srv->loop, &cli->ior);
 		ev_io_stop(cli->srv->loop, &cli->iow);
+		ev_timer_stop(cli->srv->loop, &cli->timer);
 		
 		list_del(&cli->list);
 		free(cli);

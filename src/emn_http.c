@@ -60,7 +60,6 @@ static void emn_send_http_file(struct emn_client *cli)
 	char *local_path = calloc(1, strlen(document_root) + hm->path.len + 1);
 	int code = 200;
 	int send_fd = -1;
-	struct ebuf *rbuf = &cli->rbuf;
 
 	if (!strncmp(hm->path.p, "/", hm->path.len)) {
 		emn_send_http_redirect(cli, 302, index_files);
@@ -111,8 +110,6 @@ static void emn_send_http_file(struct emn_client *cli)
 
 	if (code != 200)
 		emn_send_http_error(cli, code, NULL);
-
-	ebuf_remove(rbuf, rbuf->len);
 	
 end:
 	free(local_path);
@@ -141,6 +138,9 @@ static int on_message_begin(http_parser *parser)
 	}
 	
 	hm->nheader = 0;
+
+	ebuf_remove(&cli->rbuf, cli->rbuf.len);
+		
 	return 0;
 }
 
@@ -249,6 +249,13 @@ static http_parser_settings parser_settings = {
 	.on_message_complete = on_message_complete
 };
 
+static void http_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	struct emn_client *cli = (struct emn_client *)w->data;
+	emn_log(LOG_INFO, "http client(%p) timeout", cli);
+	emn_client_destroy(cli);
+}
+
 static int emn_http_handler(struct emn_client *cli, int event, void *data)
 {
 	if (event == EMN_EV_ACCEPT) {
@@ -256,6 +263,10 @@ static int emn_http_handler(struct emn_client *cli, int event, void *data)
 		http_parser_init(&hm->parser, HTTP_REQUEST);
 		hm->parser.data = cli;
 		cli->data = hm;
+
+		ev_timer_init(&cli->timer, http_timeout_cb, EMN_HTTP_TIMEOUT, 0);
+		cli->timer.data = cli;
+		ev_timer_start(cli->srv->loop, &cli->timer);
 	}
 
 	emn_call(cli, cli->handler, event, data);
