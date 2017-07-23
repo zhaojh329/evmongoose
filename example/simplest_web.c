@@ -26,7 +26,7 @@ int event_handler(struct emn_client *cli, int event, void *data)
 			break;
 		}
 	case EMN_EV_HTTP_REQUEST: {
-#if 0
+#if 1
 			enum http_method method = emn_get_http_method(cli);
 			struct emn_str *url = emn_get_http_url(cli);
 			struct emn_str *path = emn_get_http_path(cli);
@@ -41,7 +41,11 @@ int event_handler(struct emn_client *cli, int event, void *data)
 			printf("proto: %d.%d\n", emn_get_http_version_major(cli), emn_get_http_version_minor(cli));
 			printf("Host: %.*s\n", (int)host->len, host->p);
 			printf("body: %.*s\n", (int)body->len, body->p);
-#endif
+
+			emn_send_http_head(cli, 200, 10, NULL);
+			emn_printf(cli, "1234567890");
+			return 1;
+#endif			
 			break;
 		}
 	case EMN_EV_CLOSE: {
@@ -62,6 +66,8 @@ int main(int argc, char **argv)
 	struct emn_server *srv = NULL;
 	const char *address = "8000";
 
+	//signal(SIGPIPE, SIG_IGN);
+	
 	openlog(NULL, LOG_PERROR | LOG_PID, 0);
 	
 	printf("emn version: %d.%d\n", EMN_VERSION_MAJOR, EMN_VERSION_MINOR);

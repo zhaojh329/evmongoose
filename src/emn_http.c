@@ -20,36 +20,88 @@ struct http_message {
 	struct emn_str body; /* Zero-length for requests with no body */
 };
 
-static const char *emn_http_status_message(int code)
+static struct {
+	int code;
+	const char *reason;
+} http_status_message[] = {
+	{200, "OK"},
+	{301, "Moved"},
+	{302, "Found"},
+	{400, "Bad Request"},
+	{401, "Unauthorized"},
+	{403, "Forbidden"},
+	{404, "Not Found"},
+	{500, "Internal Server Error"},
+	{501, "Not Implemented"},
+	{502, "Bad Gateway"},
+	{503, "Service Unavailable"},
+	{-1, NULL}
+};
+
+static const struct {
+	const char *extension;
+	const char *type;
+} http_mime_types[] = {
+    {"html", "text/html"},
+    {"htm", "text/html"},
+    {"shtm", "text/html"},
+    {"shtml", "text/html"},
+    {"css", "text/css"},
+    {"js", "application/x-javascript"},
+    {"ico", "image/x-icon"},
+    {"gif", "image/gif"},
+    {"jpg", "image/jpeg"},
+    {"jpeg", "image/jpeg"},
+    {"png", "image/png"},
+    {"svg", "image/svg+xml"},
+    {"txt", "text/plain"},
+    {"torrent", "application/x-bittorrent"},
+    {"wav", "audio/x-wav"},
+    {"mp3", "audio/x-mp3"},
+    {"mid", "audio/mid"},
+    {"m3u", "audio/x-mpegurl"},
+    {"ogg", "application/ogg"},
+    {"ram", "audio/x-pn-realaudio"},
+    {"xml", "text/xml"},
+    {"ttf", "application/x-font-ttf"},
+    {"json", "application/json"},
+    {"xslt", "application/xml"},
+    {"xsl", "application/xml"},
+    {"ra", "audio/x-pn-realaudio"},
+    {"doc", "application/msword"},
+    {"exe", "application/octet-stream"},
+    {"zip", "application/x-zip-compressed"},
+    {"xls", "application/excel"},
+    {"tgz", "application/x-tar-gz"},
+    {"tar", "application/x-tar"},
+    {"gz", "application/x-gunzip"},
+    {"arj", "application/x-arj-compressed"},
+    {"rar", "application/x-rar-compressed"},
+    {"rtf", "application/rtf"},
+    {"pdf", "application/pdf"},
+    {"swf", "application/x-shockwave-flash"},
+    {"mpg", "video/mpeg"},
+    {"webm", "video/webm"},
+    {"mpeg", "video/mpeg"},
+    {"mov", "video/quicktime"},
+    {"mp4", "video/mp4"},
+    {"m4v", "video/x-m4v"},
+    {"asf", "video/x-ms-asf"},
+    {"avi", "video/x-msvideo"},
+    {"bmp", "image/bmp"},
+    {NULL, NULL}
+};
+
+static const char *get_http_status_message(int code)
 {
-	switch (code) {
-	case 301:
-		return "Moved";
-	case 302:
-		return "Found";
-	case 400:
-		return "Bad Request";
-	case 401:
-		return "Unauthorized";
-	case 403:
-		return "Forbidden";
-	case 404:
-		return "Not Found";
-	case 416:
-		return "Requested Range Not Satisfiable";
-	case 418:
-		return "I'm a teapot";
-	case 500:
-		return "Internal Server Error";
-	case 501:
-      return "Not Implemented";
-	case 502:
-		return "Bad Gateway";
-	case 503:
-		return "Service Unavailable";
-	default:
-		return "OK";
+	int i;
+	const char *reason = "OK";
+
+	for (i = 0; http_status_message[i].reason; i++) {
+		if (code == http_status_message[i].code)
+			reason = http_status_message[i].reason;
 	}
+	return reason;
 }
 
 static void emh_http_construct_etag(char *buf, size_t buf_len, struct stat *st)
@@ -72,63 +124,7 @@ static int emn_http_is_not_modified(struct emn_client *cli, struct stat *st)
 	}
 }
 
-#define MIME_ENTRY(_ext, _type) {_ext, _type}
-
-static const struct {
-	const char *extension;
-	const char *type;
-} emn_mime_types[] = {
-    MIME_ENTRY("html", "text/html"),
-    MIME_ENTRY("htm", "text/html"),
-    MIME_ENTRY("shtm", "text/html"),
-    MIME_ENTRY("shtml", "text/html"),
-    MIME_ENTRY("css", "text/css"),
-    MIME_ENTRY("js", "application/x-javascript"),
-    MIME_ENTRY("ico", "image/x-icon"),
-    MIME_ENTRY("gif", "image/gif"),
-    MIME_ENTRY("jpg", "image/jpeg"),
-    MIME_ENTRY("jpeg", "image/jpeg"),
-    MIME_ENTRY("png", "image/png"),
-    MIME_ENTRY("svg", "image/svg+xml"),
-    MIME_ENTRY("txt", "text/plain"),
-    MIME_ENTRY("torrent", "application/x-bittorrent"),
-    MIME_ENTRY("wav", "audio/x-wav"),
-    MIME_ENTRY("mp3", "audio/x-mp3"),
-    MIME_ENTRY("mid", "audio/mid"),
-    MIME_ENTRY("m3u", "audio/x-mpegurl"),
-    MIME_ENTRY("ogg", "application/ogg"),
-    MIME_ENTRY("ram", "audio/x-pn-realaudio"),
-    MIME_ENTRY("xml", "text/xml"),
-    MIME_ENTRY("ttf", "application/x-font-ttf"),
-    MIME_ENTRY("json", "application/json"),
-    MIME_ENTRY("xslt", "application/xml"),
-    MIME_ENTRY("xsl", "application/xml"),
-    MIME_ENTRY("ra", "audio/x-pn-realaudio"),
-    MIME_ENTRY("doc", "application/msword"),
-    MIME_ENTRY("exe", "application/octet-stream"),
-    MIME_ENTRY("zip", "application/x-zip-compressed"),
-    MIME_ENTRY("xls", "application/excel"),
-    MIME_ENTRY("tgz", "application/x-tar-gz"),
-    MIME_ENTRY("tar", "application/x-tar"),
-    MIME_ENTRY("gz", "application/x-gunzip"),
-    MIME_ENTRY("arj", "application/x-arj-compressed"),
-    MIME_ENTRY("rar", "application/x-rar-compressed"),
-    MIME_ENTRY("rtf", "application/rtf"),
-    MIME_ENTRY("pdf", "application/pdf"),
-    MIME_ENTRY("swf", "application/x-shockwave-flash"),
-    MIME_ENTRY("mpg", "video/mpeg"),
-    MIME_ENTRY("webm", "video/webm"),
-    MIME_ENTRY("mpeg", "video/mpeg"),
-    MIME_ENTRY("mov", "video/quicktime"),
-    MIME_ENTRY("mp4", "video/mp4"),
-    MIME_ENTRY("m4v", "video/x-m4v"),
-    MIME_ENTRY("asf", "video/x-ms-asf"),
-    MIME_ENTRY("avi", "video/x-msvideo"),
-    MIME_ENTRY("bmp", "image/bmp"),
-    {NULL, 0, NULL}
-};
-
-static const char *emn_get_mime_type(const struct emn_str *path, const char *dft)
+static const char *get_mime_type(const struct emn_str *path, const char *dft)
 {
 	int i;
 	char *p;
@@ -140,15 +136,14 @@ static const char *emn_get_mime_type(const struct emn_str *path, const char *dft
 
 	emn_str_init(&ext, p + 1, path->len + path->p - p - 1);
 
-	for (i = 0; emn_mime_types[i].extension; i++) {
-		if (!emn_strvcasecmp(&ext, emn_mime_types[i].extension))
-			return emn_mime_types[i].type;
+	for (i = 0; http_mime_types[i].extension; i++) {
+		if (!emn_strvcasecmp(&ext, http_mime_types[i].extension))
+			return http_mime_types[i].type;
 	}
 	return dft;
 }
 
-
-static void emn_send_http_file(struct emn_client *cli, struct http_message *hm)
+static void send_http_file(struct emn_client *cli, struct http_message *hm)
 {
 	struct emn_server *srv = cli->srv;
 	struct http_opts *opts = (struct http_opts *)srv->opts;
@@ -213,10 +208,16 @@ static void emn_send_http_file(struct emn_client *cli, struct http_message *hm)
 				"Content-Length: %zu\r\n"
 				"Connection: %s\r\n"
 				"\r\n",
-					date, last_modified, etag, emn_get_mime_type(&hm->path, "text/plain"),
+					date, last_modified, etag, get_mime_type(&hm->path, "text/plain"),
 					st.st_size, http_should_keep_alive(&hm->parser) ? "keep-alive" : "close"
               );
+
 		cli->send_fd = send_fd;
+		
+		if (hm->parser.method == HTTP_HEAD) {
+			close(send_fd);
+			cli->send_fd = -1;
+		}
 	}
 
 	if (code != 200)
@@ -226,18 +227,22 @@ end:
 	free(local_path);
 }
 
-static void emn_serve_http(struct emn_client *cli)
+static void serve_http(struct emn_client *cli)
 {
 	struct http_message *hm = (struct http_message *)cli->data;
 
 	switch (hm->parser.method) {
+	case HTTP_HEAD:
 	case HTTP_GET:
 	case HTTP_POST:
-		emn_send_http_file(cli, hm);
+		send_http_file(cli, hm);
 		break;
 	default:
 		emn_send_http_error(cli, 501, NULL);
 	}
+
+	if (!http_should_keep_alive(&hm->parser))
+		cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
 }
 
 static int on_message_begin(http_parser *parser)
@@ -349,13 +354,9 @@ static int on_message_complete(http_parser *parser)
 		if (url.field_set & (1 << UF_QUERY))
 			emn_str_init(&hm->query, hm->url.p + url.field_data[UF_QUERY].off, url.field_data[UF_QUERY].len);
 	}
-
-	if (!http_should_keep_alive(&hm->parser))
-		cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
 		
-	if (!emn_call(cli, NULL, EMN_EV_HTTP_REQUEST, hm))
-		emn_serve_http(cli);
-	
+	emn_call(cli, NULL, EMN_EV_HTTP_REQUEST, hm);
+
 	return 0;
 }
 
@@ -389,7 +390,8 @@ static int emn_http_handler(struct emn_client *cli, int event, void *data)
 		ev_timer_start(cli->srv->loop, &cli->timer);
 	}
 
-	emn_call(cli, cli->handler, event, data);
+	if (!emn_call(cli, cli->handler, event, data) && event == EMN_EV_HTTP_REQUEST)
+		serve_http(cli);
 
 	if (event == EMN_EV_RECV) {
 		size_t nparsed;
@@ -457,11 +459,10 @@ inline struct emn_str *emn_get_http_header(struct emn_client *cli, const char *n
 	struct http_message *hm = (struct http_message *)cli->data;
 	struct emn_str *header_names = hm->header_names;
 	struct emn_str *header_values = hm->header_values;
+	
 	while (i < hm->nheader) {
-		if (!emn_strvcasecmp(&header_names[i], name) && header_values[i].len > 0) {
+		if (!emn_strvcasecmp(&header_names[i], name) && header_values[i].len > 0)
 			return header_values + i;
-			break;
-		}
 		i++;
 	}
 	return NULL;
@@ -475,13 +476,14 @@ inline struct emn_str *emn_get_http_body(struct emn_client *cli)
 
 void emn_send_http_status_line(struct emn_client *cli, int code)
 {
-	emn_printf(cli, "HTTP/1.1 %d %s\r\nServer: Emn %d.%d\r\n",
-		code, emn_http_status_message(code), EMN_VERSION_MAJOR, EMN_VERSION_MINOR);
+	const char *reason = get_http_status_message(code);
+	emn_printf(cli, "HTTP/1.1 %d %s\r\nServer: Emn %s\r\n", code, reason, EMN_VERSION_STRING);
 }
 
 void emn_send_http_head(struct emn_client *cli, int code, ssize_t content_length, const char *extra_headers)
 {
 	emn_send_http_status_line(cli, code);
+	
 	if (content_length < 0)
 		emn_printf(cli, "%s", "Transfer-Encoding: chunked\r\n");
 	else
@@ -495,32 +497,39 @@ void emn_send_http_head(struct emn_client *cli, int code, ssize_t content_length
 
 void emn_send_http_error(struct emn_client *cli, int code, const char *reason)
 {
+	struct http_message *hm = (struct http_message *)cli->data;
+	
 	if (!reason)
-		reason = emn_http_status_message(code);
+		reason = get_http_status_message(code);
 
-	emn_send_http_head(cli, code, strlen(reason), "Content-Type: text/plain\r\nConnection: close");
-	emn_send(cli, reason, strlen(reason));
-	cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
+	if (http_should_keep_alive(&hm->parser) && code < 400) {
+		emn_send_http_head(cli, code, strlen(reason), "Content-Type: text/plain\r\nConnection: keep-alive\r\n");
+	} else {
+		emn_send_http_head(cli, code, strlen(reason), "Content-Type: text/plain\r\nConnection: close\r\n");
+	}
+	
+	if (hm->parser.method != HTTP_HEAD)
+		emn_send(cli, reason, strlen(reason));
 }
-
 
 void emn_send_http_redirect(struct emn_client *cli, int code, const char *location)
 {
 	char body[128] = "";
-	char head[150] = "";
-
+	struct http_message *hm = (struct http_message *)cli->data;
+	
 	snprintf(body, sizeof(body), "<p>Moved <a href=\"%s\">here</a></p>", location);  
 
-	snprintf(head, sizeof(head),
+	emn_send_http_status_line(cli, code);
+
+	emn_printf(cli,
 		"Location: %s\r\n"
 		"Content-Type: text/html\r\n"
 		"Content-Length: %zu\r\n"
-		"Cache-Control: no-cache\r\n",
-		location, strlen(body));
-
-	emn_send_http_status_line(cli, code);
-	emn_send(cli, head, strlen(head));
+		"Cache-Control: no-cache\r\n", location, strlen(body));
+	
 	emn_send(cli, "\r\n", 2);
-	emn_send(cli, body, strlen(body));
+
+	if (hm->parser.method != HTTP_HEAD)
+		emn_send(cli, body, strlen(body));
 }
 
