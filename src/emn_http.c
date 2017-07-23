@@ -20,16 +20,52 @@ struct http_message {
 	struct emn_str body; /* Zero-length for requests with no body */
 };
 
+static const char *emn_http_status_message(int code)
+{
+	switch (code) {
+	case 301:
+		return "Moved";
+	case 302:
+		return "Found";
+	case 400:
+		return "Bad Request";
+	case 401:
+		return "Unauthorized";
+	case 403:
+		return "Forbidden";
+	case 404:
+		return "Not Found";
+	case 416:
+		return "Requested Range Not Satisfiable";
+	case 418:
+		return "I'm a teapot";
+	case 500:
+		return "Internal Server Error";
+	case 502:
+		return "Bad Gateway";
+	case 503:
+		return "Service Unavailable";
+	default:
+		return "OK";
+	}
+}
+
 static void emn_send_http_file(struct emn_client *cli)
 {
 	struct emn_server *srv = cli->srv;
 	struct http_opts *opts = (struct http_opts *)srv->opts;
 	struct http_message *hm = (struct http_message *)cli->data;
 	const char *document_root = opts ? (opts->document_root ? opts->document_root : ".") : ".";
+	const char *index_files = opts ? (opts->index_files ? opts->index_files : "/index.html") : "/index.html";
 	char *local_path = calloc(1, strlen(document_root) + hm->path.len + 1);
 	int code = 200;
 	int send_fd = -1;
 	struct ebuf *rbuf = &cli->rbuf;
+
+	if (!strncmp(hm->path.p, "/", hm->path.len)) {
+		emn_send_http_redirect(cli, 302, index_files);
+		return;
+	}
 	
 	strcpy(local_path, document_root);
 	memcpy(local_path + strlen(document_root), hm->path.p, hm->path.len);
@@ -82,6 +118,27 @@ end:
 static void emn_serve_http(struct emn_client *cli)
 {
 	emn_send_http_file(cli);
+}
+
+static int on_message_begin(http_parser *parser)
+{
+	int i;
+	struct emn_client *cli = (struct emn_client *)parser->data;
+	struct http_message *hm = (struct http_message *)cli->data;
+	struct emn_str *header_names = hm->header_names;
+	struct emn_str *header_values = hm->header_values;
+	
+	emn_str_init(&hm->url, NULL, 0);
+	emn_str_init(&hm->body, NULL, 0);
+
+	
+	for (i = 0; i < hm->nheader; i++) {
+		emn_str_init(header_names + i, NULL, 0);
+		emn_str_init(header_values + i, NULL, 0);
+	}
+	
+	hm->nheader = 0;
+	return 0;
 }
 
 static int on_url(http_parser *parser, const char *at, size_t len)
@@ -156,8 +213,10 @@ static int on_message_complete(http_parser *parser)
 	struct http_message *hm = (struct http_message *)cli->data;
 	struct http_parser_url url;
 
+	memset(&url, 0, sizeof(url));
+
 	if (http_parser_parse_url(hm->url.p, hm->url.len, 0, &url)) {
-		emn_log(LOG_ERR, "invalid url");
+		emn_log(LOG_ERR, "invalid url[%.*s]", (int)hm->url.len, hm->url.p);
 		emn_send_http_error(cli, 400, NULL);
 		return 0;
 	} else {
@@ -178,6 +237,7 @@ static int on_message_complete(http_parser *parser)
 }
 
 static http_parser_settings parser_settings = {
+	.on_message_begin	 = on_message_begin,
 	.on_url              = on_url,
 	.on_header_field     = on_header_field,
 	.on_header_value     = on_header_value,
@@ -211,6 +271,13 @@ static int emn_http_handler(struct emn_client *cli, int event, void *data)
 	}
 	
 	return 0;
+}
+
+void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts)
+{
+	srv->proto_handler = emn_http_handler;
+	srv->flags |= EMN_FLAGS_HTTP;
+	srv->opts = opts;
 }
 
 inline enum http_method emn_get_http_method(struct emn_client *cli)
@@ -271,36 +338,6 @@ inline struct emn_str *emn_get_http_body(struct emn_client *cli)
 	return &hm->body;
 }
 
-static const char *emn_http_status_message(int code)
-{
-	switch (code) {
-	case 301:
-		return "Moved";
-	case 302:
-		return "Found";
-	case 400:
-		return "Bad Request";
-	case 401:
-		return "Unauthorized";
-	case 403:
-		return "Forbidden";
-	case 404:
-		return "Not Found";
-	case 416:
-		return "Requested Range Not Satisfiable";
-	case 418:
-		return "I'm a teapot";
-	case 500:
-		return "Internal Server Error";
-	case 502:
-		return "Bad Gateway";
-	case 503:
-		return "Service Unavailable";
-	default:
-		return "OK";
-	}
-}
-
 void emn_send_http_response_line(struct emn_client *cli, int code, const char *extra_headers)
 {
 	emn_printf(cli, "HTTP/1.1 %d %s\r\nServer: Emn %d.%d\r\n", code, emn_http_status_message(code), 
@@ -329,10 +366,22 @@ void emn_send_http_error(struct emn_client *cli, int code, const char *reason)
 	cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
 }
 
-void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts)
+
+void emn_send_http_redirect(struct emn_client *cli, int code, const char *location)
 {
-	srv->proto_handler = emn_http_handler;
-	srv->flags |= EMN_FLAGS_HTTP;
-	srv->opts = opts;
+	char body[128] = "";
+	char head[150] = "";
+
+	snprintf(body, sizeof(body), "<p>Moved <a href=\"%s\">here</a></p>", location);  
+
+	snprintf(head, sizeof(head),
+		"Location: %s\r\n"
+		"Content-Type: text/html\r\n"
+		"Content-Length: %zu\r\n"
+		"Cache-Control: no-cache\r\n",
+		location, strlen(body));
+
+	emn_send_http_response_line(cli, code, head);
+	emn_send(cli, body, strlen(body));
 }
 
