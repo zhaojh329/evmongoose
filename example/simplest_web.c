@@ -90,12 +90,17 @@ err:
 #else
 int main(int argc, char **argv)
 {
+	char *p;
+	char *path = "a.html";
 
-	struct emn_str str1;
 
-	emn_str_init(&str1, "AB12", 4);
+	p = rindex(path, '.');
+	if (!p || !*p)
+		return 1;
 
-	printf("%d\n", emn_strvcasecmp(&str1, "aB12"));
+	printf("%c %zd\n", *(p + 1), strlen(path) + path - p - 1);
+	return 0;
+
 }
 #endif
 

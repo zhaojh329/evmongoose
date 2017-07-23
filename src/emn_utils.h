@@ -1,7 +1,7 @@
 #ifndef __EMN_UTILS_H_
 #define __EMN_UTILS_H_
 
-#define _XOPEN_SOURCE
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <unistd.h>
@@ -14,6 +14,8 @@
 #include <time.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
+
+void *memrchr(const void *s, int c, size_t n);
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 

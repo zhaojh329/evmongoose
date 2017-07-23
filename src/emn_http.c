@@ -72,6 +72,82 @@ static int emn_http_is_not_modified(struct emn_client *cli, struct stat *st)
 	}
 }
 
+#define MIME_ENTRY(_ext, _type) {_ext, _type}
+
+static const struct {
+	const char *extension;
+	const char *type;
+} emn_mime_types[] = {
+    MIME_ENTRY("html", "text/html"),
+    MIME_ENTRY("htm", "text/html"),
+    MIME_ENTRY("shtm", "text/html"),
+    MIME_ENTRY("shtml", "text/html"),
+    MIME_ENTRY("css", "text/css"),
+    MIME_ENTRY("js", "application/x-javascript"),
+    MIME_ENTRY("ico", "image/x-icon"),
+    MIME_ENTRY("gif", "image/gif"),
+    MIME_ENTRY("jpg", "image/jpeg"),
+    MIME_ENTRY("jpeg", "image/jpeg"),
+    MIME_ENTRY("png", "image/png"),
+    MIME_ENTRY("svg", "image/svg+xml"),
+    MIME_ENTRY("txt", "text/plain"),
+    MIME_ENTRY("torrent", "application/x-bittorrent"),
+    MIME_ENTRY("wav", "audio/x-wav"),
+    MIME_ENTRY("mp3", "audio/x-mp3"),
+    MIME_ENTRY("mid", "audio/mid"),
+    MIME_ENTRY("m3u", "audio/x-mpegurl"),
+    MIME_ENTRY("ogg", "application/ogg"),
+    MIME_ENTRY("ram", "audio/x-pn-realaudio"),
+    MIME_ENTRY("xml", "text/xml"),
+    MIME_ENTRY("ttf", "application/x-font-ttf"),
+    MIME_ENTRY("json", "application/json"),
+    MIME_ENTRY("xslt", "application/xml"),
+    MIME_ENTRY("xsl", "application/xml"),
+    MIME_ENTRY("ra", "audio/x-pn-realaudio"),
+    MIME_ENTRY("doc", "application/msword"),
+    MIME_ENTRY("exe", "application/octet-stream"),
+    MIME_ENTRY("zip", "application/x-zip-compressed"),
+    MIME_ENTRY("xls", "application/excel"),
+    MIME_ENTRY("tgz", "application/x-tar-gz"),
+    MIME_ENTRY("tar", "application/x-tar"),
+    MIME_ENTRY("gz", "application/x-gunzip"),
+    MIME_ENTRY("arj", "application/x-arj-compressed"),
+    MIME_ENTRY("rar", "application/x-rar-compressed"),
+    MIME_ENTRY("rtf", "application/rtf"),
+    MIME_ENTRY("pdf", "application/pdf"),
+    MIME_ENTRY("swf", "application/x-shockwave-flash"),
+    MIME_ENTRY("mpg", "video/mpeg"),
+    MIME_ENTRY("webm", "video/webm"),
+    MIME_ENTRY("mpeg", "video/mpeg"),
+    MIME_ENTRY("mov", "video/quicktime"),
+    MIME_ENTRY("mp4", "video/mp4"),
+    MIME_ENTRY("m4v", "video/x-m4v"),
+    MIME_ENTRY("asf", "video/x-ms-asf"),
+    MIME_ENTRY("avi", "video/x-msvideo"),
+    MIME_ENTRY("bmp", "image/bmp"),
+    {NULL, 0, NULL}
+};
+
+static const char *emn_get_mime_type(const struct emn_str *path, const char *dft)
+{
+	int i;
+	char *p;
+	struct emn_str ext;
+
+	p = memrchr(path->p, '.', path->len);
+	if (!p || !*p)
+		return dft;
+
+	emn_str_init(&ext, p + 1, path->len + path->p - p - 1);
+
+	for (i = 0; emn_mime_types[i].extension; i++) {
+		if (!emn_strvcasecmp(&ext, emn_mime_types[i].extension))
+			return emn_mime_types[i].type;
+	}
+	return dft;
+}
+
+
 static void emn_send_http_file(struct emn_client *cli, struct http_message *hm)
 {
 	struct emn_server *srv = cli->srv;
@@ -133,11 +209,11 @@ static void emn_send_http_file(struct emn_client *cli, struct http_message *hm)
 				"Date: %s\r\n"
 				"Last-Modified: %s\r\n"
 				"Etag: %s\r\n"
-				"Content-Type: text/html\r\n"
+				"Content-Type: %s\r\n"
 				"Content-Length: %zu\r\n"
 				"Connection: %s\r\n"
 				"\r\n",
-					date, last_modified, etag,
+					date, last_modified, etag, emn_get_mime_type(&hm->path, "text/plain"),
 					st.st_size, http_should_keep_alive(&hm->parser) ? "keep-alive" : "close"
               );
 		cli->send_fd = send_fd;
