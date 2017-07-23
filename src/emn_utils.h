@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <syslog.h>
+#include <time.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
 
@@ -37,5 +38,6 @@ int emn_parse_address(const char *address, struct sockaddr_in *sin, int *proto);
 int emn_open_listening_socket(struct sockaddr_in *sin, int type, int proto);
 
 double emn_time();
+void emn_gmt_time_string(char *buf, size_t buf_len);
 
 #endif

@@ -25,7 +25,7 @@ int event_handler(struct emn_client *cli, int event, void *data)
 			break;
 		}
 	case EMN_EV_HTTP_REQUEST: {
-#if 1
+#if 0
 			enum http_method method = emn_get_http_method(cli);
 			struct emn_str *url = emn_get_http_url(cli);
 			struct emn_str *path = emn_get_http_path(cli);

@@ -98,3 +98,9 @@ double emn_time()
 	return (double)tv.tv_sec + (((double) tv.tv_usec) / 1000000.0);
 }
 
+void emn_gmt_time_string(char *buf, size_t buf_len)
+{
+	time_t t = time(NULL);
+	strftime(buf, buf_len, "%a, %d %b %Y %H:%M:%S GMT", gmtime(&t));
+}
+

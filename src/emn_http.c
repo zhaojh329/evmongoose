@@ -85,6 +85,7 @@ static void emn_send_http_file(struct emn_client *cli)
 	}
 
 	if (send_fd > 0) {
+		char date[50] = "";
 		struct stat st;
 		
 		fstat(send_fd, &st);
@@ -95,13 +96,15 @@ static void emn_send_http_file(struct emn_client *cli)
 			goto end;
 		}
 
+		emn_gmt_time_string(date, sizeof(date));
 		emn_send_http_response_line(cli, code, NULL);
     	emn_printf(cli,
-              "Content-Type: text/html\r\n"
-              "Content-Length: %zu\r\n"
-              "Connection: %s\r\n"
-              "\r\n",
-              st.st_size, http_should_keep_alive(&hm->parser) ? "keep-alive" : "close"
+				"Date: %s\r\n"
+				"Content-Type: text/html\r\n"
+				"Content-Length: %zu\r\n"
+				"Connection: %s\r\n"
+				"\r\n",
+					date, st.st_size, http_should_keep_alive(&hm->parser) ? "keep-alive" : "close"
               );
 		cli->send_fd = send_fd;
 	}

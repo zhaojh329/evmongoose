@@ -65,7 +65,7 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 			struct stat st;
 			
 			fstat(cli->send_fd, &st);
-			sendfile(w->fd, cli->send_fd, NULL, st.st_size);
+			sendfile(w->fd, cli->send_fd, NULL, st.st_size);		
 			close(cli->send_fd);
 			cli->send_fd = -1;
 		}
