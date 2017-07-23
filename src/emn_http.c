@@ -259,14 +259,15 @@ static int emn_http_handler(struct emn_client *cli, int event, void *data)
 
 	if (event == EMN_EV_RECV) {
 		size_t nparsed;
-		int len = *(int *)data;
-		struct ebuf *rbuf = &cli->rbuf;
+		struct ebuf *rbuf = (struct ebuf *)data;
 		struct http_message *hm = (struct http_message *)cli->data;
 		
-		nparsed = http_parser_execute(&hm->parser, &parser_settings, rbuf->buf + rbuf->len - len, len);
-		if (nparsed != len) {
+		nparsed = http_parser_execute(&hm->parser, &parser_settings, rbuf->buf, rbuf->len);
+		if (nparsed != rbuf->len) {
 			emn_log(LOG_ERR, "%s", http_errno_description(HTTP_PARSER_ERRNO(&hm->parser)));
 			emn_send_http_error(cli, 400, NULL);			
+		} else {
+			ebuf_append(&cli->rbuf, rbuf->buf, rbuf->len);
 		}
 	}
 	

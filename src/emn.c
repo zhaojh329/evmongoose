@@ -1,9 +1,6 @@
 #include "emn.h"
 #include "emn_internal.h"
 #include "list.h"
-#include <errno.h>
-#include <stdarg.h>
-#include <assert.h>
 #include <sys/sendfile.h>
 
 inline struct ebuf *emn_get_rbuf(struct emn_client *cli)
@@ -28,23 +25,15 @@ inline int emn_call(struct emn_client *cli, emn_event_handler_t handler, int eve
 
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
-	ssize_t len;
-	static char *buf;
+	struct ebuf ebuf;
 	struct emn_client *cli = (struct emn_client *)w->data;
+
+	ebuf_init(&ebuf, EMN_RECV_BUFFER_SIZE);
 	
-	if (!buf) {
-		buf = malloc(EMN_TCP_RECV_BUFFER_SIZE);
-		if (!buf) {
-			emn_log(LOG_ERR, "emn: can't alloc mem");
-			return;
-		}
-	}
-	
-	len = read(w->fd, buf, EMN_TCP_RECV_BUFFER_SIZE);
-	if (len > 0) {
-		ebuf_append(&cli->rbuf, buf, len);
-		emn_call(cli, NULL, EMN_EV_RECV, &len);
-	} else if (len == 0) {
+	ebuf.len = read(w->fd, ebuf.buf, ebuf.size);
+	if (ebuf.len > 0) {
+		emn_call(cli, NULL, EMN_EV_RECV, &ebuf);
+	} else if (ebuf.len == 0) {
 		/* Orderly shutdown of the socket, try flushing output. */
 		cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
 	} else {
@@ -223,58 +212,9 @@ void emn_client_destroy(struct emn_client *cli)
 	}
 }
 
-void emn_sever_set_proto_handler(struct emn_server *srv, emn_event_handler_t proto_handler)
-{
-	assert(srv);
-	assert(proto_handler);
-	srv->proto_handler = proto_handler;
-}
-
-void emn_sever_set_flags(struct emn_server *srv, uint16_t flags)
-{
-	assert(srv);
-	srv->flags |= flags;
-}
-
-void emn_sever_set_opts(struct emn_server *srv, void *opts)
-{
-	assert(srv);
-	srv->opts = opts;
-}
-
-void *emn_server_get_opts(struct emn_server *srv)
-{
-	return srv->opts;
-}
-
 void emn_client_set_flags(struct emn_client *cli, uint16_t flags)
 {
 	assert(cli);
 	cli->flags |= flags;
-}
-
-void emn_client_set_send_fd(struct emn_client *cli, int fd)
-{
-	cli->send_fd = fd;
-}
-
-void emn_client_set_data(struct emn_client *cli, void *data)
-{
-	cli->data = data;
-}
-
-void *emn_client_get_data(struct emn_client *cli)
-{
-	return cli->data;
-}
-
-struct emn_server *emn_client_get_server(struct emn_client *cli)
-{
-	return cli->srv;
-}
-
-emn_event_handler_t emn_client_get_handler(struct emn_client *cli)
-{
-	return cli->handler;
 }
 

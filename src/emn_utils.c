@@ -1,10 +1,3 @@
-#include <stdio.h>
-#include <unistd.h>
-#include <string.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <stdarg.h>
-#include <arpa/inet.h>
 #include "emn_utils.h"
 
 void __emn_log(const char *filename, int line, int priority, const char *format, ...)
@@ -93,5 +86,15 @@ int emn_open_listening_socket(struct sockaddr_in *sin, int type, int proto)
 	}
 	
 	return sock;
+}
+
+double emn_time()
+{
+	struct timeval tv;
+	if (gettimeofday(&tv, NULL) < 0) {
+		emn_log(LOG_ERR, "gettimeofday:%s", strerror(errno));
+		return 0;
+	}
+	return (double)tv.tv_sec + (((double) tv.tv_usec) / 1000000.0);
 }
 
