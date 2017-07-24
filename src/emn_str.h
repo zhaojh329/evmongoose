@@ -27,5 +27,4 @@ int emn_strncmp(const struct emn_str *str1, const struct emn_str *str2, size_t n
 int emn_strvcmp(const struct emn_str *str1, const char *str2);
 int emn_strvcasecmp(const struct emn_str *str1, const char *str2);
 
-
 #endif

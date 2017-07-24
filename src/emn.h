@@ -29,23 +29,45 @@ typedef int (*emn_event_handler_t)(struct emn_client *cli, int event, void *data
 #define EMN_FLAGS_SEND_AND_CLOSE	(1 << 1)	/* Send remaining data and close  */
 #define EMN_FLAGS_CLOSE_IMMEDIATELY (1 << 2)	/* Disconnect */
 
-#if 0
- * Address format: [PROTO://][HOST]:PORT
- * Example: 8000			- Proto defaults to TCP
- *			tcp://*:8000
- *			udp://*:8000
- *			tcp://192.168.1.1:8000
- *			udp://192.168.1.1:8000
+/*
+ * Creates a server.
+ *
+ * The 'address' parameter specifies which address to bind to. 'HOST' part is optional.
+ * 'address' can be just a port number, e.g. :8000. To bind to a specific
+ * interface, an IP address can be specified, e.g. '1.2.3.4:8000'. By default,
+ * a TCP server is created. To create UDP server, prepend 'udp://' prefix, 
+ * e.g. 'udp://:8000'. To summarize, 'address' paramer has following
+ * format: '[PROTO://][IP_ADDRESS]:PORT', where 'PROTO' could be 'tcp' or 'udp'.
+ *
+ * Returns a new emn_server or NULL on error.
  */
-#endif
 struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler);
+
+/* De-initialises emn_server and release all resources associated with it */
 void emn_server_destroy(struct emn_server *srv);
+
+/* De-initialises emn_client and release all resources associated with it */
 void emn_client_destroy(struct emn_client *cli);
-int emn_call(struct emn_client *cli, emn_event_handler_t handler, int event, void *data);
-int emn_printf(struct emn_client *cli, const char *fmt, ...);
+
+/*
+ * Sends data to the client.
+ *
+ * Note that sending functions do not actually push data to the socket.
+ * They just append data to the output buffer. EMN_EV_SEND will be delivered when
+ * the data has actually been pushed out.
+ */
 size_t emn_send(struct emn_client *cli, const void *buf, int len);
 
+/*
+ * Sends 'printf' style formatted data to the client.
+ * See 'emn_send' for more details on send semantics.
+ */
+int emn_printf(struct emn_client *cli, const char *fmt, ...);
+
+/* Get receive buf of the client */
 struct ebuf *emn_get_rbuf(struct emn_client *cli);
+
+/* Get send buf of the client */
 struct ebuf *emn_get_sbuf(struct emn_client *cli);
 
 void emn_client_set_flags(struct emn_client *cli, uint16_t flags);

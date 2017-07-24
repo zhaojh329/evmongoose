@@ -15,25 +15,14 @@
 
 #define __FILENAME__ (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-
+/*
+ * Use the syslog output log and include the name and number of rows at the call
+ * Example: emn_log(LOG_INFO, "bind failed:%s", strerror(errno));
+ * Output:	(emn.c:176) bind failed:Address already in use
+ */
 #define emn_log(priority, format...) __emn_log(__FILENAME__, __LINE__, priority, format)
 
 void  __emn_log(const char *filename, int line, int priority, const char *format, ...);
-
-
-#if 0
- * Address format: [PROTO://][HOST]:PORT
- * Example: "8000" - Proto defaults to TCP
- * 		 	"tcp://*:8000"
- * 			"udp://*:8000"
- * 		 	"tcp://192.168.1.1:8000"
- * 		 	"udp://192.168.1.1:8000"
- *
- * Return:
- *   -1   on parse error
- *    0   parse ok
- #endif
-int emn_parse_address(const char *address, struct sockaddr_in *sin, int *proto);
 
 /* Gets the time of the current microsecond precision */
 double emn_time();

@@ -114,6 +114,52 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	emn_call(cli, NULL, EMN_EV_ACCEPT, &sin);
 }
 
+static int parse_address(const char *address, struct sockaddr_in *sin, int *proto)
+{
+	const char *str;
+	char *p;
+	char host[16] = "";
+	uint16_t port = 0;
+
+	assert(address);
+	
+	memset(sin, 0, sizeof(struct sockaddr_in));
+	
+	sin->sin_family = AF_INET;
+	*proto = SOCK_STREAM;
+	str = address;
+	
+	if (strncmp(str, "udp://", 6) == 0) {
+		str += 6;
+		*proto = SOCK_DGRAM;
+	} else if (strncmp(str, "tcp://", 6) == 0) {
+		str += 6;
+	}
+
+	p = strchr(str, ':');
+	if (p) {
+		if (p - str > 15)
+			return -1;
+		
+		memcpy(host, str, p - str);
+
+		if (strcmp(host, "*")) {	
+			if (inet_pton(AF_INET, host, &sin->sin_addr) <= 0)
+				return -1;
+		}
+		str = p + 1;
+	}
+
+	port = atoi(str);
+	if (port <= 0)
+		return -1;
+
+	sin->sin_port = htons(port);
+	
+	return 0;
+}
+
+
 size_t emn_send(struct emn_client *cli, const void *buf, int len)
 {
 	len = ebuf_append(&cli->sbuf, buf, len);
@@ -151,14 +197,14 @@ struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event
 	int proto;
 	int on = 1;
 	
-	if (emn_parse_address(address, &sin, &proto) < 0) {
-		emn_log(LOG_ERR, "emn: can't parse address");
+	if (parse_address(address, &sin, &proto) < 0) {
+		emn_log(LOG_ERR, "parse address failed");
 		return NULL;
 	}
 
 	srv = calloc(1, sizeof(struct emn_server));
 	if (!srv) {
-		emn_log(LOG_ERR, "emn: can't alloc mem");
+		emn_log(LOG_ERR, "alloc mem failed");
 		return NULL;
 	}
 	
@@ -166,19 +212,19 @@ struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event
 
 	sock = socket(sin.sin_family, proto | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
 	if (sock < 0) {
-		emn_log(LOG_ERR, "emn: can't create socket:%s", strerror(errno));
+		emn_log(LOG_ERR, "can't create socket:%s", strerror(errno));
 		goto err;
 	}
 
 	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
 	if (bind(sock, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) < 0) {
-		emn_log(LOG_ERR, "emn: can't bind:%s", strerror(errno));
+		emn_log(LOG_ERR, "can't bind:%s", strerror(errno));
 		goto err;
 	}
 
 	if (proto == SOCK_STREAM && listen(sock, SOMAXCONN) < 0) {
-		emn_log(LOG_ERR, "emn: can't listening:%s", strerror(errno));
+		emn_log(LOG_ERR, "can't listening:%s", strerror(errno));
 		goto err;
 	}
 

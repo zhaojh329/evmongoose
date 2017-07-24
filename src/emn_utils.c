@@ -14,51 +14,6 @@ void __emn_log(const char *filename, int line, int priority, const char *format,
 	syslog(priority, "%s", buf);
 }
 
-int emn_parse_address(const char *address, struct sockaddr_in *sin, int *proto)
-{
-	const char *str;
-	char *p;
-	char host[16] = "";
-	uint16_t port = 0;
-
-	assert(address);
-	
-	memset(sin, 0, sizeof(struct sockaddr_in));
-	
-	sin->sin_family = AF_INET;
-	*proto = SOCK_STREAM;
-	str = address;
-	
-	if (strncmp(str, "udp://", 6) == 0) {
-		str += 6;
-		*proto = SOCK_DGRAM;
-	} else if (strncmp(str, "tcp://", 6) == 0) {
-		str += 6;
-	}
-
-	p = strchr(str, ':');
-	if (p) {
-		if (p - str > 15)
-			return -1;
-		
-		memcpy(host, str, p - str);
-
-		if (strcmp(host, "*")) {	
-			if (inet_pton(AF_INET, host, &sin->sin_addr) <= 0)
-				return -1;
-		}
-		str = p + 1;
-	}
-
-	port = atoi(str);
-	if (port <= 0)
-		return -1;
-
-	sin->sin_port = htons(port);
-	
-	return 0;
-}
-
 double emn_time()
 {
 	struct timeval tv;

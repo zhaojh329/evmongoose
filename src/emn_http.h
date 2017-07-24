@@ -26,6 +26,13 @@ struct http_opts {
 struct emn_server;
 struct emn_client;
 
+/*
+ * Attaches a built-in HTTP event handler to the given emn_server.
+ * The user-defined event handler will receive following extra events:
+ *
+ * - EMN_EV_HTTP_REQUEST: HTTP request has arrived. Parsed HTTP request
+ *  is passed as 'struct http_message' through the handler's 'void *data' pointer.
+ */
 void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts);
 
 enum http_method emn_get_http_method(struct emn_client *cli);

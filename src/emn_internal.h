@@ -33,4 +33,6 @@ struct emn_client {
 	struct list_head list;
 };
 
+int emn_call(struct emn_client *cli, emn_event_handler_t handler, int event, void *data);
+
 #endif
