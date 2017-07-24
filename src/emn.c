@@ -191,6 +191,12 @@ int emn_printf(struct emn_client *cli, const char *fmt, ...)
 
 struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler)
 {
+	return emn_bind_opt(loop, address, ev_handler, NULL);
+}
+
+struct emn_server *emn_bind_opt(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler, 
+								struct emn_bind_opts *opts)
+{
 	struct sockaddr_in sin;
 	struct emn_server *srv = NULL;
 	int sock;

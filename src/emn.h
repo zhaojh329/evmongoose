@@ -10,8 +10,30 @@
 #include "emn_utils.h"
 #include "emn_http.h"
 
+#if (EMN_SUPPORT_HTTPS)
+#include <openssl/ssl.h>
+#endif
+
 struct emn_server;
 struct emn_client;
+
+struct emn_bind_opts {
+#if (EMN_SUPPORT_HTTPS)
+	/*
+	 * SSL settings.
+	 *
+	 * Server certificate to present to clients or client certificate to
+	 * present to tunnel dispatcher (for tunneled connections).
+	 */
+	const char *ssl_cert;
+
+	/*
+	 * Private key corresponding to the certificate. If ssl_cert is set but
+	 * ssl_key is not, ssl_cert is used.
+	 */
+	const char *ssl_key;
+#endif
+};
 
 typedef int (*emn_event_handler_t)(struct emn_client *cli, int event, void *data);
 
@@ -31,6 +53,12 @@ typedef int (*emn_event_handler_t)(struct emn_client *cli, int event, void *data
 
 /*
  * Creates a server.
+ * See `emn_bind_opt` for full documentation.
+ */
+struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler);
+
+/*
+ * Creates a server.
  *
  * The 'address' parameter specifies which address to bind to. 'HOST' part is optional.
  * 'address' can be just a port number, e.g. :8000. To bind to a specific
@@ -41,7 +69,8 @@ typedef int (*emn_event_handler_t)(struct emn_client *cli, int event, void *data
  *
  * Returns a new emn_server or NULL on error.
  */
-struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler);
+struct emn_server *emn_bind_opt(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler, 
+								struct emn_bind_opts *opts);
 
 /* De-initialises emn_server and release all resources associated with it */
 void emn_server_destroy(struct emn_server *srv);
