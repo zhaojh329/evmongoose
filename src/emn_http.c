@@ -1,24 +1,6 @@
-#include "emn_http.h"
 #include "emn.h"
+#include "emn_http.h"
 #include "emn_internal.h"
-#include <errno.h>
-
-/* HTTP message */
-struct http_message {
-	http_parser parser;
-
-	struct emn_str url;
-	struct emn_str path;
-	struct emn_str query;
-
-	/* Headers */
-	uint8_t nheader;	/* Number of headers */
-	struct emn_str header_names[EMN_MAX_HTTP_HEADERS];
-	struct emn_str header_values[EMN_MAX_HTTP_HEADERS];
-
-	/* Message body */
-	struct emn_str body; /* Zero-length for requests with no body */
-};
 
 static struct {
 	int code;
@@ -112,12 +94,13 @@ static void emh_http_construct_etag(char *buf, size_t buf_len, struct stat *st)
 static int emn_http_is_not_modified(struct emn_client *cli, struct stat *st)
 {
 	struct emn_str *hdr;
+	struct http_message *hm = (struct http_message *)cli->data;
 	
-	if ((hdr = emn_get_http_header(cli, "If-None-Match"))) {
+	if ((hdr = emn_get_http_header(hm, "If-None-Match"))) {
 		char etag[64] = "";
 		emh_http_construct_etag(etag, sizeof(etag), st);
 		return emn_strvcasecmp(hdr, etag) == 0;
-	} else if ((hdr = emn_get_http_header(cli, "If-Modified-Since"))) {
+	} else if ((hdr = emn_get_http_header(hm, "If-Modified-Since"))) {
 		return st->st_mtime <= emn_gmt2time(hdr->p);
 	} else {
 		return 0;
@@ -411,46 +394,9 @@ void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts)
 	srv->opts = opts;
 }
 
-inline enum http_method emn_get_http_method(struct emn_client *cli)
-{
-	struct http_message *hm = (struct http_message *)cli->data;
-	return hm->parser.method;
-}
-
-inline struct emn_str *emn_get_http_url(struct emn_client *cli)
-{
-	struct http_message *hm = (struct http_message *)cli->data;
-	return &hm->url;
-}
-
-inline struct emn_str *emn_get_http_path(struct emn_client *cli)
-{
-	struct http_message *hm = (struct http_message *)cli->data;
-	return &hm->path;
-}
-
-inline struct emn_str *emn_get_http_query(struct emn_client *cli)
-{
-	struct http_message *hm = (struct http_message *)cli->data;
-	return &hm->query;
-}
-
-inline uint8_t emn_get_http_version_major(struct emn_client *cli)
-{
-	struct http_message *hm = (struct http_message *)cli->data;
-	return hm->parser.http_major;
-}
-
-inline uint8_t emn_get_http_version_minor(struct emn_client *cli)
-{
-	struct http_message *hm = (struct http_message *)cli->data;
-	return hm->parser.http_minor;
-}
-
-inline struct emn_str *emn_get_http_header(struct emn_client *cli, const char *name)
+inline struct emn_str *emn_get_http_header(struct http_message *hm, const char *name)
 {
 	int i = 0;
-	struct http_message *hm = (struct http_message *)cli->data;
 	struct emn_str *header_names = hm->header_names;
 	struct emn_str *header_values = hm->header_values;
 	
@@ -460,12 +406,6 @@ inline struct emn_str *emn_get_http_header(struct emn_client *cli, const char *n
 		i++;
 	}
 	return NULL;
-}
-
-inline struct emn_str *emn_get_http_body(struct emn_client *cli)
-{
-	struct http_message *hm = (struct http_message *)cli->data;
-	return &hm->body;
 }
 
 void emn_send_http_status_line(struct emn_client *cli, int code)

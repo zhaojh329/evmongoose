@@ -1,6 +1,6 @@
 #include "emn.h"
-#include "emn_internal.h"
 #include "list.h"
+#include "emn_internal.h"
 #include <sys/sendfile.h>
 
 inline struct ebuf *emn_get_rbuf(struct emn_client *cli)

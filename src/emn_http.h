@@ -1,8 +1,8 @@
 #ifndef __EMN_HTTP_H_
 #define __EMN_HTTP_H_
 
-#include <http_parser.h>
 #include "emn.h"
+#include <http_parser.h>
 
 #define EMN_FLAGS_HTTP			(1 << 0)
 
@@ -23,6 +23,23 @@ struct http_opts {
 	const char *index_files;
 };
 
+/* HTTP message */
+struct http_message {
+	http_parser parser;
+
+	struct emn_str url;
+	struct emn_str path;
+	struct emn_str query;
+
+	/* Headers */
+	uint8_t nheader;	/* Number of headers */
+	struct emn_str header_names[EMN_MAX_HTTP_HEADERS];
+	struct emn_str header_values[EMN_MAX_HTTP_HEADERS];
+
+	/* Message body */
+	struct emn_str body; /* Zero-length for requests with no body */
+};
+
 struct emn_server;
 struct emn_client;
 
@@ -35,14 +52,13 @@ struct emn_client;
  */
 void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts);
 
-enum http_method emn_get_http_method(struct emn_client *cli);
-struct emn_str *emn_get_http_url(struct emn_client *cli);
-struct emn_str *emn_get_http_path(struct emn_client *cli);
-struct emn_str *emn_get_http_query(struct emn_client *cli);
-uint8_t emn_get_http_version_major(struct emn_client *cli);
-uint8_t emn_get_http_version_minor(struct emn_client *cli);
-struct emn_str *emn_get_http_header(struct emn_client *cli, const char *name);
-struct emn_str *emn_get_http_body(struct emn_client *cli);
+
+/*
+ * Searches and returns the header 'name' in parsed HTTP message 'hm'.
+ * If header is not found, NULL is returned.
+ * Example: struct emn_str *host = emn_get_http_header(hm, "Host");
+ */
+struct emn_str *emn_get_http_header(struct http_message *hm, const char *name);
 
 void emn_send_http_status_line(struct emn_client *cli, int code);
 void emn_send_http_head(struct emn_client *cli, int code, ssize_t content_length, const char *extra_headers);

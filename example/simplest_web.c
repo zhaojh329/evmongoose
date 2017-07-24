@@ -27,22 +27,18 @@ int event_handler(struct emn_client *cli, int event, void *data)
 		}
 	case EMN_EV_HTTP_REQUEST: {
 #if 1
-			enum http_method method = emn_get_http_method(cli);
-			struct emn_str *url = emn_get_http_url(cli);
-			struct emn_str *path = emn_get_http_path(cli);
-			struct emn_str *query = emn_get_http_query(cli);
-			struct emn_str *host = emn_get_http_header(cli, "host");
-			struct emn_str *body = emn_get_http_body(cli);
+			struct http_message *hm = (struct http_message *)data;
+			struct emn_str *host = emn_get_http_header(hm, "Host");
 			
-			printf("method: %s\n", http_method_str(method));
-			printf("url: %.*s\n", (int)url->len, url->p);
-			printf("path: %.*s\n", (int)path->len, path->p);
-			printf("query: %.*s\n", (int)query->len, query->p);
-			printf("proto: %d.%d\n", emn_get_http_version_major(cli), emn_get_http_version_minor(cli));
+			printf("method: %s\n", http_method_str(hm->parser.method));
+			printf("url: %.*s\n", (int)hm->url.len, hm->url.p);
+			printf("path: %.*s\n", (int)hm->path.len, hm->path.p);
+			printf("query: %.*s\n", (int)hm->query.len, hm->query.p);
+			printf("proto: %d.%d\n", hm->parser.http_major, hm->parser.http_minor);
 
 			if (host)
 				printf("Host: %.*s\n", (int)host->len, host->p);
-			printf("body: %.*s\n", (int)body->len, body->p);
+			printf("body: %.*s\n", (int)hm->body.len, hm->body.p);
 
 			emn_send_http_head(cli, 200, -1, NULL);
 			emn_send_http_chunk(cli, "12", 2);
