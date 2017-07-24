@@ -9,12 +9,13 @@ static int print_err_cb(const char *str, size_t len, void *fp)
 	return 0;
 }
 
-int emn_ssl_init(void *obj, const char *cert, const char *key, int type)
+SSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
 {
 	SSL_CTX *ctx = NULL;
 
 	SSL_library_init();
-	
+
+	/* creates a new SSL_CTX object */
 	if (type == EMN_TYPE_SERVER)
 		ctx = SSL_CTX_new(SSLv23_server_method());
 	else
@@ -22,24 +23,25 @@ int emn_ssl_init(void *obj, const char *cert, const char *key, int type)
 
 	if (!ctx) {
 		emn_log(LOG_ERR, "Failed to create SSL context");
-		return -1;
+		return NULL;
 	}
 
-	if (SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM) == 0) {
+	/* loads the first certificate stored in file into ctx */
+	if (!SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM)) {
 		ERR_print_errors_cb(print_err_cb, NULL);
 		goto err;
 	}
 		
-
-	if (SSL_CTX_use_RSAPrivateKey_file(ctx, key, SSL_FILETYPE_PEM) == 0) {
+	/* adds the first private RSA key found in file to ctx */
+	if (!SSL_CTX_use_RSAPrivateKey_file(ctx, key, SSL_FILETYPE_PEM)) {
 		ERR_print_errors_cb(print_err_cb, NULL);
 		goto err;
 	}
 	
-	return 0;
+	return ctx;
 	
 err:
 	SSL_CTX_free(ctx);
-	return -1;
+	return NULL;
 }
 

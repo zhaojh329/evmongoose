@@ -31,8 +31,12 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 	struct emn_client *cli = (struct emn_client *)w->data;
 
 	ebuf_init(&ebuf, EMN_RECV_BUFFER_SIZE);
+
+	if (cli->flags & EMN_FLAGS_SSL)
+		len = SSL_read(cli->ssl, ebuf.buf, ebuf.size);
+	else
+		len = read(w->fd, ebuf.buf, ebuf.size);
 	
-	len = read(w->fd, ebuf.buf, ebuf.size);
 	if (len > 0) {
 		ebuf.len = len;
 		emn_call(cli, NULL, EMN_EV_RECV, &ebuf);
@@ -51,10 +55,19 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 	struct emn_client *cli = (struct emn_client *)w->data;
 	struct ebuf *sbuf = &cli->sbuf;
 	ssize_t len = -1;
-
-	len = write(w->fd, sbuf->buf, sbuf->len);
+	
+	if (cli->flags & EMN_FLAGS_SSL)
+		len = SSL_write(cli->ssl, sbuf->buf, sbuf->len);
+	else
+		len = write(w->fd, sbuf->buf, sbuf->len);
+	
 	if (len > 0)
 		ebuf_remove(sbuf, len);
+
+	if (len < 0) {
+		emn_client_destroy(cli);
+		return;
+	}
 
 	if (cli->flags & EMN_FLAGS_CLOSE_IMMEDIATELY) {
 		emn_client_destroy(cli);
@@ -65,10 +78,24 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 		ev_io_stop(cli->srv->loop, &cli->iow);
 		
 		if (cli->send_fd > 0) {
-			struct stat st;
-			
-			fstat(cli->send_fd, &st);
-			sendfile(w->fd, cli->send_fd, NULL, st.st_size);		
+			if (cli->flags & EMN_FLAGS_SSL) {
+				char buf[1024];
+				while (1) {
+					len = read(cli->send_fd, buf, sizeof(buf));
+					if (len > 0) {
+						if (SSL_write(cli->ssl, buf, len) < 0)
+							break;
+					} else if (len == 0) {
+						break;
+					} else {
+						cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
+					}
+				}
+			} else {
+				struct stat st;
+				fstat(cli->send_fd, &st);
+				sendfile(w->fd, cli->send_fd, NULL, st.st_size);				
+			}
 			close(cli->send_fd);
 			cli->send_fd = -1;
 		}
@@ -102,6 +129,23 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	cli->proto_handler = srv->proto_handler;
 	cli->srv = srv;
 	cli->sock = sock;
+
+	if (srv->flags & EMN_FLAGS_SSL) {
+		cli->ssl = SSL_new(srv->ssl_ctx);
+		if (!cli->ssl) {
+			emn_client_destroy(cli);
+			return;
+		}
+
+		SSL_set_fd(cli->ssl, cli->sock);
+		cli->flags |= EMN_FLAGS_SSL;
+		
+		if (!SSL_accept(cli->ssl)) {
+			emn_log(LOG_ERR, "SSL_accept failed");
+			emn_client_destroy(cli);
+			return;
+		}
+	}
 	
 	list_add(&cli->list, &srv->client_list);
 	
@@ -244,8 +288,12 @@ struct emn_server *emn_bind_opt(struct ev_loop *loop, const char *address, emn_e
 
 #if (EMN_SUPPORT_HTTPS)
 	if (proto == SOCK_STREAM && opts && opts->ssl_cert) {
-		if (emn_ssl_init(srv, opts->ssl_cert, opts->ssl_key, EMN_TYPE_SERVER) < 0)
+		SSL_CTX *ctx = emn_ssl_init(opts->ssl_cert, opts->ssl_key, EMN_TYPE_SERVER);
+		if (!ctx)
 			goto err;
+
+		srv->ssl_ctx = ctx;
+		srv->flags |= EMN_FLAGS_SSL;
 	}
 #endif	
 	
@@ -275,6 +323,8 @@ void emn_server_destroy(struct emn_server *srv)
 
 		if (srv->opts)
 			free(srv->opts);
+
+		SSL_CTX_free(srv->ssl_ctx);
 		
 		free(srv);
 	}
@@ -290,6 +340,10 @@ void emn_client_destroy(struct emn_client *cli)
 
 		if (cli->data)
 			free(cli->data);
+
+		
+		if (cli->flags & EMN_FLAGS_SSL)
+			SSL_free(cli->ssl);
 		
 		ebuf_free(&cli->rbuf);
 		ebuf_free(&cli->sbuf);

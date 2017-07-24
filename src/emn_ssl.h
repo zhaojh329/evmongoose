@@ -3,6 +3,6 @@
 
 #include "emn_internal.h"
 
-int emn_ssl_init(void *obj, const char *cert, const char *key, int type);
+SSL_CTX *emn_ssl_init(const char *cert, const char *key, int type);
 
 #endif

@@ -26,7 +26,7 @@ int event_handler(struct emn_client *cli, int event, void *data)
 			break;
 		}
 	case EMN_EV_HTTP_REQUEST: {
-#if 1
+#if 0
 			struct http_message *hm = (struct http_message *)data;
 			struct emn_str *host = emn_get_http_header(hm, "Host");
 			
