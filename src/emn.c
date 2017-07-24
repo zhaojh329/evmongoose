@@ -122,15 +122,19 @@ void emn_send(struct emn_client *cli, const void *buf, int len)
 
 int emn_printf(struct emn_client *cli, const char *fmt, ...)
 {
-	int len;
+	int len = 0;
 	va_list ap;
 	char *str = NULL;
-	
-	va_start(ap, fmt);
-	len = vasprintf(&str, fmt, ap);
-	va_end(ap);
 
-	if (len > 0) {
+	assert(fmt);
+
+	if (*fmt) {
+		va_start(ap, fmt);
+		len = vasprintf(&str, fmt, ap);
+		va_end(ap);
+	}
+	
+	if (len >= 0) {
 		emn_send(cli, str, len);
 		free(str);
 	}
