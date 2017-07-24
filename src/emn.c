@@ -2,7 +2,7 @@
 #include "list.h"
 #include "emn_ssl.h"
 #include "emn_internal.h"
-#include <sys/sendfile.h>
+#include <sys/mman.h>
 
 inline struct ebuf *emn_get_rbuf(struct emn_client *cli)
 {
@@ -78,29 +78,29 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 		ev_io_stop(cli->srv->loop, &cli->iow);
 		
 		if (cli->send_fd > 0) {
-			if (cli->flags & EMN_FLAGS_SSL) {
-				char buf[1024];
-				while (1) {
-					len = read(cli->send_fd, buf, sizeof(buf));
-					if (len > 0) {
-						if (SSL_write(cli->ssl, buf, len) < 0)
-							break;
-					} else if (len == 0) {
-						break;
-					} else {
-						cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
-					}
-				}
-			} else {
-				struct stat st;
-				fstat(cli->send_fd, &st);
-				sendfile(w->fd, cli->send_fd, NULL, st.st_size);				
-			}
+			struct stat st;
+			char *fb = NULL;
+		
+			fstat(cli->send_fd, &st);
+			
+			fb = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, cli->send_fd, 0);
 			close(cli->send_fd);
 			cli->send_fd = -1;
+			
+			if (cli->flags & EMN_FLAGS_SSL) {
+				if (SSL_write(cli->ssl, fb, st.st_size) < 0) {
+					emn_log(LOG_ERR, "SSL_write failed");
+					cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
+				}
+			} else {
+				if (write(w->fd, fb, st.st_size) < 0) {
+					emn_log(LOG_ERR, "write failed");
+					cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
+				}
+			}
 		}
 
-		if (cli->flags & EMN_FLAGS_SEND_AND_CLOSE)
+		if ((cli->flags & EMN_FLAGS_SEND_AND_CLOSE) || (cli->flags & EMN_FLAGS_CLOSE_IMMEDIATELY))
 			emn_client_destroy(cli);
 	}
 }
