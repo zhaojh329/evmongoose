@@ -1,5 +1,6 @@
 #include "emn.h"
 #include "list.h"
+#include "emn_ssl.h"
 #include "emn_internal.h"
 #include <sys/sendfile.h>
 
@@ -237,6 +238,17 @@ struct emn_server *emn_bind_opt(struct ev_loop *loop, const char *address, emn_e
 	srv->sock = sock;
 	srv->handler = ev_handler;
 	srv->loop = loop;
+
+	if (proto == SOCK_DGRAM)
+		srv->flags |= EMN_FLAGS_UDP;
+
+#if (EMN_SUPPORT_HTTPS)
+	if (proto == SOCK_STREAM && opts && opts->ssl_cert) {
+		if (emn_ssl_init(srv, opts->ssl_cert, EMN_TYPE_SERVER) < 0)
+			goto err;
+		srv->flags |= EMN_FLAGS_SSL;
+	}
+#endif	
 	
 	ev_io_init(&srv->ior, ev_accept_cb, sock, EV_READ);
 	srv->ior.data = srv;

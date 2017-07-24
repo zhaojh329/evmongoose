@@ -14,6 +14,21 @@
 #include <openssl/ssl.h>
 #endif
 
+#define EMN_RECV_BUFFER_SIZE	1024
+
+/* Events. Meaning of event parameter (evp) is given in the comment. */
+#define EMN_EV_POLL		0   /* Sent to each connection on each mg_mgr_poll() call */
+#define EMN_EV_ACCEPT	1  	/* New connection accepted. union socket_address * */
+#define EMN_EV_CONNECT	2 	/* connect() succeeded or failed. int *  */
+#define EMN_EV_RECV		3   /* Data has benn received. struct ebuf * */
+#define EMN_EV_SEND		4   /* Data has been written to a socket. int *num_bytes */
+#define EMN_EV_CLOSE	5   /* Connection is closed. NULL */
+
+#define EMN_FLAGS_SEND_AND_CLOSE	(1 << 0)	/* Send remaining data and close  */
+#define EMN_FLAGS_CLOSE_IMMEDIATELY (1 << 1)	/* Disconnect */
+#define EMN_FLAGS_SSL				(1 << 2)	/* SSL is enabled on the server or client */
+#define EMN_FLAGS_UDP				(1 << 3)	/* The server or client using the UDP protocol */
+
 struct emn_server;
 struct emn_client;
 
@@ -36,20 +51,6 @@ struct emn_bind_opts {
 };
 
 typedef int (*emn_event_handler_t)(struct emn_client *cli, int event, void *data);
-
-#define EMN_RECV_BUFFER_SIZE	1024
-
-/* Events. Meaning of event parameter (evp) is given in the comment. */
-#define EMN_EV_POLL		0   /* Sent to each connection on each mg_mgr_poll() call */
-#define EMN_EV_ACCEPT	1  	/* New connection accepted. union socket_address * */
-#define EMN_EV_CONNECT	2 	/* connect() succeeded or failed. int *  */
-#define EMN_EV_RECV		3   /* Data has benn received. struct ebuf * */
-#define EMN_EV_SEND		4   /* Data has been written to a socket. int *num_bytes */
-#define EMN_EV_CLOSE	5   /* Connection is closed. NULL */
-#define EMN_EV_TIMER	6   /* now >= conn->ev_timer_time. double * */
-
-#define EMN_FLAGS_SEND_AND_CLOSE	(1 << 1)	/* Send remaining data and close  */
-#define EMN_FLAGS_CLOSE_IMMEDIATELY (1 << 2)	/* Disconnect */
 
 /*
  * Creates a server.

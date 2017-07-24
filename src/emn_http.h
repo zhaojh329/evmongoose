@@ -4,7 +4,7 @@
 #include "emn.h"
 #include <http_parser.h>
 
-#define EMN_FLAGS_HTTP			(1 << 0)
+#define EMN_FLAGS_HTTP			(1 << 10)
 
 #define EMN_MAX_HTTP_HEADERS	40
 
