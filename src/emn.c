@@ -244,9 +244,8 @@ struct emn_server *emn_bind_opt(struct ev_loop *loop, const char *address, emn_e
 
 #if (EMN_SUPPORT_HTTPS)
 	if (proto == SOCK_STREAM && opts && opts->ssl_cert) {
-		if (emn_ssl_init(srv, opts->ssl_cert, EMN_TYPE_SERVER) < 0)
+		if (emn_ssl_init(srv, opts->ssl_cert, opts->ssl_key, EMN_TYPE_SERVER) < 0)
 			goto err;
-		srv->flags |= EMN_FLAGS_SSL;
 	}
 #endif	
 	

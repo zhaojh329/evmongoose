@@ -10,10 +10,6 @@
 #include "emn_utils.h"
 #include "emn_http.h"
 
-#if (EMN_SUPPORT_HTTPS)
-#include <openssl/ssl.h>
-#endif
-
 #define EMN_RECV_BUFFER_SIZE	1024
 
 /* Events. Meaning of event parameter (evp) is given in the comment. */

@@ -66,6 +66,10 @@ int main(int argc, char **argv)
 	ev_signal sig_watcher;
 	struct emn_server *srv = NULL;
 	const char *address = "8000";
+	struct emn_bind_opts opts = {
+		.ssl_cert = "server.pem",
+		.ssl_key = "server.key"
+	};
 
 	//signal(SIGPIPE, SIG_IGN);
 	
@@ -76,7 +80,7 @@ int main(int argc, char **argv)
 	ev_signal_init(&sig_watcher, signal_cb, SIGINT);
 	ev_signal_start(loop, &sig_watcher);
 	
-	srv = emn_bind(loop, address, event_handler);
+	srv = emn_bind_opt(loop, address, event_handler, &opts);
 	if (!srv) {
 		printf("emn_bind failed\n");
 		goto err;
