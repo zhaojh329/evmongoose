@@ -527,14 +527,16 @@ void emn_send_http_redirect(struct emn_client *cli, int code, const char *locati
 		emn_send(cli, body, strlen(body));
 }
 
-void emn_send_http_chunk(struct emn_client *cli, const char *buf, size_t len)
+int emn_send_http_chunk(struct emn_client *cli, const char *buf, size_t len)
 {
-	emn_printf(cli, "%zX\r\n", len);
-	emn_send(cli, buf, len);
-	emn_send(cli, "\r\n", 2);
+	int slen = 0;
+	slen += emn_printf(cli, "%zX\r\n", len);
+	slen += emn_send(cli, buf, len);
+	slen += emn_send(cli, "\r\n", 2);
+	return slen;
 }
 
-void emn_printf_http_chunk(struct emn_client *cli, const char *fmt, ...)
+int emn_printf_http_chunk(struct emn_client *cli, const char *fmt, ...)
 {
 	int len = 0;
 	va_list ap;
@@ -549,8 +551,10 @@ void emn_printf_http_chunk(struct emn_client *cli, const char *fmt, ...)
 	}
 
 	if (len >= 0) {
-		emn_send_http_chunk(cli, str, len);
+		len = emn_send_http_chunk(cli, str, len);
 		free(str);
 	}
+
+	return len;
 }
 

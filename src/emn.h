@@ -43,7 +43,7 @@ void emn_server_destroy(struct emn_server *srv);
 void emn_client_destroy(struct emn_client *cli);
 int emn_call(struct emn_client *cli, emn_event_handler_t handler, int event, void *data);
 int emn_printf(struct emn_client *cli, const char *fmt, ...);
-void emn_send(struct emn_client *cli, const void *buf, int len);
+size_t emn_send(struct emn_client *cli, const void *buf, int len);
 
 struct ebuf *emn_get_rbuf(struct emn_client *cli);
 struct ebuf *emn_get_sbuf(struct emn_client *cli);

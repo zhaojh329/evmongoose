@@ -114,10 +114,12 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	emn_call(cli, NULL, EMN_EV_ACCEPT, &sin);
 }
 
-void emn_send(struct emn_client *cli, const void *buf, int len)
+size_t emn_send(struct emn_client *cli, const void *buf, int len)
 {
-	ebuf_append(&cli->sbuf, buf, len);
-    ev_io_start(cli->srv->loop, &cli->iow);
+	len = ebuf_append(&cli->sbuf, buf, len);
+	if (len > 0)
+	    ev_io_start(cli->srv->loop, &cli->iow);
+	return len;
 }
 
 int emn_printf(struct emn_client *cli, const char *fmt, ...)
@@ -135,7 +137,7 @@ int emn_printf(struct emn_client *cli, const char *fmt, ...)
 	}
 	
 	if (len >= 0) {
-		emn_send(cli, str, len);
+		len = emn_send(cli, str, len);
 		free(str);
 	}
 	return len;
