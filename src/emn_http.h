@@ -42,5 +42,6 @@ void emn_send_http_head(struct emn_client *cli, int code, ssize_t content_length
 void emn_send_http_error(struct emn_client *cli, int code, const char *reason);
 void emn_send_http_redirect(struct emn_client *cli, int code, const char *location);
 void emn_send_http_chunk(struct emn_client *cli, const char *buf, size_t len);
+void emn_printf_http_chunk(struct emn_client *cli, const char *fmt, ...);
 
 #endif

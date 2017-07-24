@@ -47,6 +47,7 @@ int event_handler(struct emn_client *cli, int event, void *data)
 			emn_send_http_head(cli, 200, -1, NULL);
 			emn_send_http_chunk(cli, "12", 2);
 			emn_send_http_chunk(cli, "345", 3);
+			emn_printf_http_chunk(cli, "Emn:%d\n", 123);
 			emn_send_http_chunk(cli, NULL, 0);
 			return 1;
 #endif			

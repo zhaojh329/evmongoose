@@ -534,3 +534,23 @@ void emn_send_http_chunk(struct emn_client *cli, const char *buf, size_t len)
 	emn_send(cli, "\r\n", 2);
 }
 
+void emn_printf_http_chunk(struct emn_client *cli, const char *fmt, ...)
+{
+	int len = 0;
+	va_list ap;
+	char *str = NULL;
+
+	assert(fmt);
+
+	if (*fmt) {
+		va_start(ap, fmt);
+		len = vasprintf(&str, fmt, ap);
+		va_end(ap);
+	}
+
+	if (len >= 0) {
+		emn_send_http_chunk(cli, str, len);
+		free(str);
+	}
+}
+
