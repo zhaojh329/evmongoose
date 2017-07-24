@@ -4,7 +4,11 @@ set(EMN_VERSION_MINOR 1)
 
 # configure a header file to pass some of the CMake settings to the source code
 configure_file(emn_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/emn_config.h)
-	
+
+find_package(Libev 4.22 REQUIRED)
+find_package(HttpParser 2.1 REQUIRED)
+find_package(HttpParser 2.1 REQUIRED)
+
 include_directories(${LIBEV_INCLUDE_DIRS} ${HTTPPARSER_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 
 add_library(emn SHARED emn.c emn_str.c emn_buf.c emn_utils.c emn_http.c)
