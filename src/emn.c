@@ -147,7 +147,9 @@ struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event
 {
 	struct sockaddr_in sin;
 	struct emn_server *srv = NULL;
+	int sock;
 	int proto;
+	int on = 1;
 	
 	if (emn_parse_address(address, &sin, &proto) < 0) {
 		emn_log(LOG_ERR, "emn: can't parse address");
@@ -161,22 +163,37 @@ struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event
 	}
 	
 	INIT_LIST_HEAD(&srv->client_list);
-	
-	srv->sock = emn_open_listening_socket(&sin, proto, 0);
-	if (srv->sock < 0) {
-		emn_log(LOG_ERR, "emn: can't open listening_socket");
-		emn_server_destroy(srv);
-		return NULL;
+
+	sock = socket(sin.sin_family, proto | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+	if (sock < 0) {
+		emn_log(LOG_ERR, "emn: can't create socket:%s", strerror(errno));
+		goto err;
 	}
-	
+
+	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+
+	if (bind(sock, (struct sockaddr *)&sin, sizeof(struct sockaddr_in)) < 0) {
+		emn_log(LOG_ERR, "emn: can't bind:%s", strerror(errno));
+		goto err;
+	}
+
+	if (proto == SOCK_STREAM && listen(sock, SOMAXCONN) < 0) {
+		emn_log(LOG_ERR, "emn: can't listening:%s", strerror(errno));
+		goto err;
+	}
+
+	srv->sock = sock;
 	srv->handler = ev_handler;
 	srv->loop = loop;
 	
-	ev_io_init(&srv->ior, ev_accept_cb, srv->sock, EV_READ);
+	ev_io_init(&srv->ior, ev_accept_cb, sock, EV_READ);
 	srv->ior.data = srv;
 	ev_io_start(loop, &srv->ior);
   
 	return srv;
+err:
+	emn_server_destroy(srv);
+	return NULL;
 }
 
 void emn_server_destroy(struct emn_server *srv)

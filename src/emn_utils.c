@@ -59,35 +59,6 @@ int emn_parse_address(const char *address, struct sockaddr_in *sin, int *proto)
 	return 0;
 }
 
-
-int emn_open_listening_socket(struct sockaddr_in *sin, int type, int proto)
-{
-	int sock = -1;
-	int on = 1;
-
-	sock = socket(sin->sin_family, type | SOCK_NONBLOCK | SOCK_CLOEXEC, proto);
-	if (sock < 0) {
-		perror("socket");
-		return -1;
-	}
-
-	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-	if (bind(sock, (struct sockaddr *)sin, sizeof(struct sockaddr_in)) < 0) {
-		perror("bind");
-		close(sock);
-		return -1;
-	}
-
-	if (type == SOCK_STREAM && listen(sock, SOMAXCONN) < 0) {
-		perror("listen");
-		close(sock);
-		return -1;
-	}
-	
-	return sock;
-}
-
 double emn_time()
 {
 	struct timeval tv;

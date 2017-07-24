@@ -35,9 +35,6 @@ void  __emn_log(const char *filename, int line, int priority, const char *format
  #endif
 int emn_parse_address(const char *address, struct sockaddr_in *sin, int *proto);
 
- 
-int emn_open_listening_socket(struct sockaddr_in *sin, int type, int proto);
-
 /* Gets the time of the current microsecond precision */
 double emn_time();
 
