@@ -29,7 +29,7 @@ struct emn_server;
 struct emn_client;
 
 struct emn_bind_opts {
-#if (EMN_SUPPORT_HTTPS)
+#if (EMN_SSL_ENABLED)
 	/*
 	 * SSL settings.
 	 *

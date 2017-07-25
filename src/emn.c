@@ -33,7 +33,11 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 	ebuf_init(&ebuf, EMN_RECV_BUFFER_SIZE);
 
 	if (cli->flags & EMN_FLAGS_SSL)
+#if (EMN_USE_OPENSSL)		
 		len = SSL_read(cli->ssl, ebuf.buf, ebuf.size);
+#elif (EMN_USE_CYASSL)
+		len = wolfSSL_read(cli->ssl, ebuf.buf, ebuf.size);
+#endif
 	else
 		len = read(w->fd, ebuf.buf, ebuf.size);
 	
@@ -57,7 +61,11 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 	ssize_t len = -1;
 	
 	if (cli->flags & EMN_FLAGS_SSL)
+#if (EMN_USE_OPENSSL)		
 		len = SSL_write(cli->ssl, sbuf->buf, sbuf->len);
+#elif (EMN_USE_CYASSL)
+		len = wolfSSL_write(cli->ssl, sbuf->buf, sbuf->len);
+#endif
 	else
 		len = write(w->fd, sbuf->buf, sbuf->len);
 	
@@ -88,7 +96,11 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 			cli->send_fd = -1;
 			
 			if (cli->flags & EMN_FLAGS_SSL) {
+#if (EMN_USE_OPENSSL)				
 				if (SSL_write(cli->ssl, fb, st.st_size) < 0) {
+#elif (EMN_USE_CYASSL)
+				if (wolfSSL_write(cli->ssl, fb, st.st_size) < 0) {
+#endif					
 					emn_log(LOG_ERR, "SSL_write failed");
 					cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
 				}
@@ -130,23 +142,34 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	cli->srv = srv;
 	cli->sock = sock;
 
+#if (EMN_SSL_ENABLED)
 	if (srv->flags & EMN_FLAGS_SSL) {
+#if (EMN_USE_OPENSSL)		
 		cli->ssl = SSL_new(srv->ssl_ctx);
+#elif (EMN_USE_CYASSL)
+		cli->ssl = wolfSSL_new(srv->ssl_ctx);
+#endif
 		if (!cli->ssl) {
 			emn_client_destroy(cli);
 			return;
 		}
-
+#if (EMN_USE_OPENSSL)
 		SSL_set_fd(cli->ssl, cli->sock);
+#elif (EMN_USE_CYASSL)
+		wolfSSL_set_fd(cli->ssl, cli->sock);
+#endif
 		cli->flags |= EMN_FLAGS_SSL;
-		
+#if (EMN_USE_OPENSSL)		
 		if (!SSL_accept(cli->ssl)) {
+
 			emn_log(LOG_ERR, "SSL_accept failed");
 			emn_client_destroy(cli);
 			return;
 		}
+#endif		
 	}
-	
+#endif
+
 	list_add(&cli->list, &srv->client_list);
 	
 	ev_io_init(&cli->ior, ev_read_cb, sock, EV_READ);
@@ -286,9 +309,14 @@ struct emn_server *emn_bind_opt(struct ev_loop *loop, const char *address, emn_e
 	if (proto == SOCK_DGRAM)
 		srv->flags |= EMN_FLAGS_UDP;
 
-#if (EMN_SUPPORT_HTTPS)
+#if (EMN_SSL_ENABLED)
 	if (proto == SOCK_STREAM && opts && opts->ssl_cert) {
-		SSL_CTX *ctx = emn_ssl_init(opts->ssl_cert, opts->ssl_key, EMN_TYPE_SERVER);
+#if (EMN_USE_OPENSSL)
+		SSL_CTX *ctx = NULL;
+#elif (EMN_USE_CYASSL)
+		WOLFSSL_CTX *ctx = NULL;
+#endif
+		ctx = emn_ssl_init(opts->ssl_cert, opts->ssl_key, EMN_TYPE_SERVER);
 		if (!ctx)
 			goto err;
 
@@ -324,8 +352,15 @@ void emn_server_destroy(struct emn_server *srv)
 		if (srv->opts)
 			free(srv->opts);
 
-		SSL_CTX_free(srv->ssl_ctx);
-		
+#if (EMN_SSL_ENABLED)
+		if (srv->flags & EMN_FLAGS_SSL) {
+#if (EMN_USE_OPENSSL)			
+			SSL_CTX_free(srv->ssl_ctx);
+#elif (EMN_USE_CYASSL)
+			wolfSSL_CTX_free(srv->ssl_ctx);
+#endif
+		}
+#endif
 		free(srv);
 	}
 }
@@ -341,10 +376,15 @@ void emn_client_destroy(struct emn_client *cli)
 		if (cli->data)
 			free(cli->data);
 
-		
+#if (EMN_SSL_ENABLED)		
 		if (cli->flags & EMN_FLAGS_SSL)
+#if (EMN_USE_OPENSSL)			
 			SSL_free(cli->ssl);
-		
+#elif (EMN_USE_CYASSL)
+			wolfSSL_free(cli->ssl);
+#endif
+#endif
+
 		ebuf_free(&cli->rbuf);
 		ebuf_free(&cli->sbuf);
 		

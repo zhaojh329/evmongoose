@@ -1,8 +1,7 @@
 #include "emn_ssl.h"
 #include "emn_utils.h"
-#include <openssl/ssl.h>
-#include <openssl/err.h>
 
+#if (EMN_USE_OPENSSL)
 static int print_err_cb(const char *str, size_t len, void *fp)
 {
 	syslog(LOG_ERR, "%s", str);
@@ -50,4 +49,37 @@ err:
 	SSL_CTX_free(ctx);
 	return NULL;
 }
+#elif (EMN_USE_CYASSL)
+WOLFSSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
+{
+	WOLFSSL_CTX *ctx = NULL;
 
+	/* Initialize wolfSSL */
+	wolfSSL_Init();
+
+	/* Create the WOLFSSL_CTX */
+	if (type == EMN_TYPE_SERVER)
+		ctx = wolfSSL_CTX_new(wolfSSLv23_server_method_ex(NULL));
+	else
+		ctx = wolfSSL_CTX_new(wolfSSLv23_client_method_ex(NULL));
+
+	/* Load server certificates into WOLFSSL_CTX */
+	if (wolfSSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM) != SSL_SUCCESS) {
+		emn_log(LOG_ERR, "Error loading certificate file");
+		goto err;
+	}
+
+	/* Load keys */
+	if (wolfSSL_CTX_use_PrivateKey_file(ctx, key, SSL_FILETYPE_PEM) != SSL_SUCCESS){
+		emn_log(LOG_ERR, "Error loading key");
+		goto err;
+	}
+
+	return ctx;
+	
+err:
+	wolfSSL_CTX_free(ctx);
+	wolfSSL_Cleanup();
+	return NULL;
+}
+#endif

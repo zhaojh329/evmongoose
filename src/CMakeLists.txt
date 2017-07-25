@@ -2,30 +2,63 @@
 set(EMN_VERSION_MAJOR 0)
 set(EMN_VERSION_MINOR 1)
 
-find_package(Libev 4.22 REQUIRED)
-find_package(HttpParser 2.1 REQUIRED)
-find_package(OpenSSL 1.0.2)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
-set(EMN_SUPPORT_HTTPS 0)
-set(SUPPORT_HTTPS_DEFAULT ON)
+# Check the necessary Libraries
 
-if (NOT OPENSSL_FOUND)
-	set(HTTPS_SUPPORT_DEFAULT OFF)
-endif (NOT OPENSSL_FOUND)
+find_package(Libev REQUIRED)
+find_package(HttpParser REQUIRED)
 
-option(SUPPORT_HTTPS "whether to support https" ${SUPPORT_HTTPS_DEFAULT})
-
-include_directories(${LIBEV_INCLUDE_DIRS} ${HTTPPARSER_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
-
+include_directories(${LIBEV_INCLUDE_DIRS} ${HTTPPARSER_INCLUDE_DIRS})
 set(EXTRA_LIBS ${LIBEV_LIBRARIES} ${HTTPPARSER_LIBRARIES})
 set(SOURCE_FILES emn.c emn_str.c emn_buf.c emn_utils.c emn_http.c)
 
-if (SUPPORT_HTTPS)
-	set(EMN_SUPPORT_HTTPS 1)
-	include_directories(${OPENSSL_INCLUDE_DIRS})
+# Check SSL libraries. TODO support OpenSSL, CyaSSL
+
+set(SSL_ENABLED 0)
+option(CMAKE_USE_CYASSL "Enable CyaSSL for SSL/TLS" OFF)
+set(openssl_default ON)
+
+if(CMAKE_USE_CYASSL)
+	set(openssl_default OFF)
+endif()
+
+option(CMAKE_USE_OPENSSL "Enable OpenSSL for SSL/TLS" ${openssl_default})
+
+foreach(option_var IN LISTS CMAKE_USE_CYASSL CMAKE_USE_OPENSSL)
+	if(${option_var})
+		list(APPEND enabled_ssl_options ${option_var})
+	endif()
+endforeach()
+list(LENGTH enabled_ssl_options enabled_ssl_options_count)
+
+if(enabled_ssl_options_count GREATER 1)
+	message(FATAL_ERROR "Multiple SSL options specified. Please pick at most one and disable the rest.")
+endif()
+
+set(USE_OPENSSL 0)
+
+if(CMAKE_USE_OPENSSL)
+	find_package(OpenSSL REQUIRED)
+	set(SSL_ENABLED 1)
+	set(USE_OPENSSL 1)
 	list(APPEND EXTRA_LIBS ${OPENSSL_LIBRARIES})
+	include_directories(${OPENSSL_INCLUDE_DIR})
+endif()
+
+set(USE_CYASSL 0)
+
+if(CMAKE_USE_CYASSL)
+	find_package(CyaSSL REQUIRED)
+	set(SSL_ENABLED 1)
+	set(USE_CYASSL 1)
+	list(APPEND EXTRA_LIBS ${CYASSL_LIBRARIES})
+	include_directories(${CYASSL_INCLUDE_DIR})
+endif()
+
+if(SSL_ENABLED)
 	list(APPEND SOURCE_FILES emn_ssl.c)
-endif (SUPPORT_HTTPS)
+endif()
 
 add_library(emn SHARED ${SOURCE_FILES})
 set_target_properties(emn PROPERTIES VERSION ${EMN_VERSION_MAJOR}.${EMN_VERSION_MINOR})
