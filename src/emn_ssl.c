@@ -32,7 +32,13 @@ SSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
 		goto err;
 	}
 		
-	/* adds the first private RSA key found in file to ctx */
+	/*
+	 * adds the first private RSA key found in file to ctx.
+	 *
+	 * checks the consistency of a private key with the corresponding 
+	 * certificate loaded into ctx. If more than one key/certificate 
+	 * pair (RSA/DSA) is installed, the last item installed will be checked.
+	 */
 	if (!SSL_CTX_use_RSAPrivateKey_file(ctx, key, SSL_FILETYPE_PEM)) {
 		ERR_print_errors_cb(print_err_cb, NULL);
 		goto err;
