@@ -4,7 +4,7 @@ set(EMN_VERSION_MINOR 1)
 
 find_package(Libev 4.22 REQUIRED)
 find_package(HttpParser 2.1 REQUIRED)
-find_package(OpenSSL)
+find_package(OpenSSL 1.0.2)
 
 set(EMN_SUPPORT_HTTPS 0)
 set(SUPPORT_HTTPS_DEFAULT ON)
