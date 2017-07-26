@@ -11,15 +11,17 @@ static int print_err_cb(const char *str, size_t len, void *fp)
 SSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
 {
 	SSL_CTX *ctx = NULL;
+	const SSL_METHOD *method = NULL;
 
 	SSL_library_init();
 
-	/* creates a new SSL_CTX object */
 	if (type == EMN_TYPE_SERVER)
-		ctx = SSL_CTX_new(SSLv23_server_method());
+		method = SSLv23_server_method();
 	else
-		ctx = SSL_CTX_new(SSLv23_client_method());
+		method = SSLv23_client_method();
 
+	/* creates a new SSL_CTX object */
+	SSL_CTX_new(method);
 	if (!ctx) {
 		emn_log(LOG_ERR, "Failed to create SSL context");
 		return NULL;
@@ -53,15 +55,22 @@ err:
 WOLFSSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
 {
 	WOLFSSL_CTX *ctx = NULL;
+	WOLFSSL_METHOD *method = NULL;
 
 	/* Initialize wolfSSL */
 	wolfSSL_Init();
 
-	/* Create the WOLFSSL_CTX */
 	if (type == EMN_TYPE_SERVER)
-		ctx = wolfSSL_CTX_new(wolfSSLv23_server_method_ex(NULL));
+		method = wolfSSLv23_server_method_ex(NULL);
 	else
-		ctx = wolfSSL_CTX_new(wolfSSLv23_client_method_ex(NULL));
+		method = wolfSSLv23_client_method_ex(NULL);
+
+	/* Create the WOLFSSL_CTX */
+	ctx = wolfSSL_CTX_new(method);
+	if (!ctx) {
+		emn_log(LOG_ERR, "Failed to create wolfSSL context");
+		return NULL;
+	}
 
 	/* Load server certificates into WOLFSSL_CTX */
 	if (wolfSSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM) != SSL_SUCCESS) {

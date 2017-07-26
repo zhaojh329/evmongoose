@@ -49,7 +49,7 @@ endif()
 set(USE_CYASSL 0)
 
 if(CMAKE_USE_CYASSL)
-	find_package(CyaSSL REQUIRED)
+	find_package(CyaSSL 3.10.0 REQUIRED)
 	set(SSL_ENABLED 1)
 	set(USE_CYASSL 1)
 	list(APPEND EXTRA_LIBS ${CYASSL_LIBRARIES})
