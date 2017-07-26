@@ -21,6 +21,7 @@ set(openssl_default ON)
 
 if(CMAKE_USE_CYASSL)
 	set(openssl_default OFF)
+	set(CMAKE_USE_OPENSSL OFF)
 endif()
 
 option(CMAKE_USE_OPENSSL "Enable OpenSSL for SSL/TLS" ${openssl_default})
