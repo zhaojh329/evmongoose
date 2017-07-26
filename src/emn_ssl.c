@@ -61,9 +61,9 @@ WOLFSSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
 	wolfSSL_Init();
 
 	if (type == EMN_TYPE_SERVER)
-		method = wolfSSLv23_server_method_ex(NULL);
+		method = wolfSSLv23_server_method();
 	else
-		method = wolfSSLv23_client_method_ex(NULL);
+		method = wolfSSLv23_client_method();
 
 	/* Create the WOLFSSL_CTX */
 	ctx = wolfSSL_CTX_new(method);
