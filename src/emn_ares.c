@@ -31,7 +31,7 @@ int emn_ares(struct ev_loop *loop, const char *domain, dns_query_a4_fn *dnscb)
 		goto err;
 	}
 
-	dns_timeouts(0, -1, time(NULL));
+	dns_timeouts(NULL, -1, time(NULL));
 	
 	return 0;
 
