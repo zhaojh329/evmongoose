@@ -48,6 +48,7 @@ struct emn_client {
 #elif (EMN_USE_CYASSL)
 	WOLFSSL *ssl;
 #endif
+	struct ev_loop *loop;
 	struct emn_server *srv;
 	struct list_head list;
 };

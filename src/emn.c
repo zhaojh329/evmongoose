@@ -59,7 +59,25 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 	struct emn_client *cli = (struct emn_client *)w->data;
 	struct ebuf *sbuf = &cli->sbuf;
 	ssize_t len = -1;
-	
+
+	if (cli->flags & EMN_FLAGS_CONNECTING) {
+		int err = 0;
+		socklen_t slen = sizeof(err);
+		int ret = getsockopt(w->fd, SOL_SOCKET, SO_ERROR, (char *) &err, &slen);
+		if (ret != 0) {
+			err = 1;
+		} else if (err == EAGAIN || err == EWOULDBLOCK) {
+			err = 0;
+		}
+		
+		cli->flags &= ~EMN_FLAGS_CONNECTING;
+		emn_call(cli, NULL, EMN_EV_CONNECT, &err);
+		if (err)
+			emn_client_destroy(cli);
+		ev_io_stop(loop, &cli->iow);
+		return;
+	}
+
 	if (cli->flags & EMN_FLAGS_SSL)
 #if (EMN_USE_OPENSSL)		
 		len = SSL_write(cli->ssl, sbuf->buf, sbuf->len);
@@ -141,6 +159,7 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	cli->proto_handler = srv->proto_handler;
 	cli->srv = srv;
 	cli->sock = sock;
+	cli->loop = loop;
 
 #if (EMN_SSL_ENABLED)
 	if (srv->flags & EMN_FLAGS_SSL) {
@@ -335,6 +354,55 @@ err:
 	return NULL;
 }
 
+struct emn_client *emn_connect(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler)
+{
+	struct sockaddr_in sin;
+	struct emn_client *cli = NULL;
+	int sock;
+	int proto;
+	
+	if (parse_address(address, &sin, &proto) < 0) {
+		emn_log(LOG_ERR, "parse address failed");
+		return NULL;
+	}
+
+	cli = calloc(1, sizeof(struct emn_client));
+	if (!cli) {
+		emn_log(LOG_ERR, "alloc mem failed");
+		return NULL;
+	}
+
+	sock = socket(sin.sin_family, proto | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+	if (sock < 0) {
+		emn_log(LOG_ERR, "can't create socket:%s", strerror(errno));
+		goto err;
+	}
+
+	if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
+		if (errno != EINPROGRESS) {
+			emn_log(LOG_ERR, "can't connect:%s", strerror(errno));
+			goto err;
+		}
+	}
+
+	cli->loop = loop;
+	cli->flags |= EMN_FLAGS_CONNECTING;
+	cli->handler = ev_handler;
+	
+	ev_io_init(&cli->ior, ev_read_cb, sock, EV_READ);
+	cli->ior.data = cli;
+	ev_io_start(loop, &cli->ior);
+	
+	ev_io_init(&cli->iow, ev_write_cb, sock, EV_WRITE);
+	cli->iow.data = cli;
+	ev_io_start(loop, &cli->iow);
+	
+	return cli;	
+err:
+	emn_client_destroy(cli);
+	return NULL;	
+}
+
 void emn_server_destroy(struct emn_server *srv)
 {
 	if (srv) {
@@ -388,11 +456,12 @@ void emn_client_destroy(struct emn_client *cli)
 		ebuf_free(&cli->rbuf);
 		ebuf_free(&cli->sbuf);
 		
-		ev_io_stop(cli->srv->loop, &cli->ior);
-		ev_io_stop(cli->srv->loop, &cli->iow);
-		ev_timer_stop(cli->srv->loop, &cli->timer);
-		
-		list_del(&cli->list);
+		ev_io_stop(cli->loop, &cli->ior);
+		ev_io_stop(cli->loop, &cli->iow);
+		ev_timer_stop(cli->loop, &cli->timer);
+
+		if (cli->srv)
+			list_del(&cli->list);
 		free(cli);
 	}
 }

@@ -25,6 +25,7 @@
 #define EMN_FLAGS_CLOSE_IMMEDIATELY (1 << 1)	/* Disconnect */
 #define EMN_FLAGS_SSL				(1 << 2)	/* SSL is enabled on the server or client */
 #define EMN_FLAGS_UDP				(1 << 3)	/* The server or client using the UDP protocol */
+#define EMN_FLAGS_CONNECTING		(1 << 4)	/* connect() call in progress */
 
 struct emn_server;
 struct emn_client;
@@ -72,6 +73,9 @@ struct emn_server *emn_bind_opt(struct ev_loop *loop, const char *address, emn_e
 
 /* De-initialises emn_server and release all resources associated with it */
 void emn_server_destroy(struct emn_server *srv);
+
+struct emn_client *emn_connect(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler);
+
 
 /* De-initialises emn_client and release all resources associated with it */
 void emn_client_destroy(struct emn_client *cli);
