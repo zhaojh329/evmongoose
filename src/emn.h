@@ -9,6 +9,7 @@
 #include "emn_buf.h"
 #include "emn_utils.h"
 #include "emn_http.h"
+#include "emn_ares.h"
 
 #define EMN_RECV_BUFFER_SIZE	1024
 
