@@ -2,50 +2,108 @@
 #include "emn_ares.h"
 #include "emn_utils.h"
 
-static int EMN_ARES_INITED;
-static ev_io dns_ior;
-static struct ev_loop *dns_loop;
+struct emn_ares {
+	ev_io ior;
+	ev_timer timer;
+	struct dns_ctx *ctx;
+	struct ev_loop *loop;
+	emn_ares_cb_t cb;
+};
+
+static void dnscb(struct dns_ctx *ctx, struct dns_rr_a4 *result, void *data)
+{
+	struct emn_ares_query *eq = (struct emn_ares_query *)data;
+	eq->ares->cb(eq, result);
+}
+
+static void ares_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	
+}
 
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
-	dns_ioevent(NULL, time(NULL));
+	struct emn_ares *ares = (struct emn_ares *)w->data;
+	dns_ioevent(ares->ctx, time(NULL));
 }
 
-int emn_ares(struct ev_loop *loop, const char *domain, dns_query_a4_fn *dnscb)
+struct emn_ares *emn_ares_init(struct ev_loop *loop, emn_ares_cb_t cb)
 {
-	if (!EMN_ARES_INITED) {
-		int fd = dns_init(NULL, 1);
-		if (fd < 0) {
-			emn_log(LOG_ERR, "unable to initialize dns context");
-			return -1;
-		}
+	struct dns_ctx *ctx = NULL;
+	struct emn_ares *ares = NULL;
 
-		EMN_ARES_INITED = 1;
-		dns_loop = loop;
-		ev_io_init(&dns_ior, ev_read_cb, fd, EV_READ);
-		ev_io_start(loop, &dns_ior);
-	}	
+	dns_init(NULL, 0);
 
-	if (dns_submit_a4(0, domain, 0, dnscb, (void *)domain) == 0) {
-		emn_log(LOG_ERR, "%s: unable to submit query", dns_strerror(dns_status(NULL)));
+	ctx = dns_new(NULL);
+	if (!ctx)
+		return NULL;
+
+	ares = calloc(1, sizeof(struct emn_ares));
+	if (!ares) {
+		emn_log(LOG_ERR, "No mem");
 		goto err;
 	}
 
-	dns_timeouts(NULL, -1, time(NULL));
+	ares->loop = loop;
+	ares->ctx = ctx;
+	ares->cb = cb;
 	
-	return 0;
+	ev_io_init(&ares->ior, ev_read_cb, dns_open(ctx), EV_READ);
+	ares->ior.data = ares;
+	ev_io_start(loop, &ares->ior);
 
+	ev_timer_init(&ares->timer, ares_timeout_cb, 1, 1);
+	ev_timer_start(loop, &ares->timer);
+	return ares;
 err:
-	emn_ares_free();
-	return -1;
+	emn_ares_free(ares);
+	return NULL;
 }
 
-void emn_ares_free()
+void emn_ares_free(struct emn_ares *ares)
 {
-	if (EMN_ARES_INITED) {
-		EMN_ARES_INITED = 0;
-		ev_io_stop(dns_loop, &dns_ior);
-		dns_close(NULL);
+	if (!ares)
+		return;
+	
+	if (ares->ctx)
+		dns_free(ares->ctx);
+
+	ev_io_stop(ares->loop, &ares->ior);
+	ev_timer_stop(ares->loop, &ares->timer);
+
+	free(ares);	
+}
+
+struct emn_ares_query *emn_ares_resolve(struct emn_ares *ares, const char *name, void *data)
+{
+	struct dns_query *q = NULL;
+	struct emn_ares_query *eq = NULL;
+
+	eq = calloc(1, sizeof(struct emn_ares_query));
+	if (!eq)
+		return NULL;
+	
+	q = dns_submit_a4(ares->ctx, name, 0, dnscb, eq); 
+	if (!q) {
+		emn_log(LOG_ERR, "unable to submit query:%s", dns_strerror(dns_status(ares->ctx)));
+		free(eq);
+		return NULL;
+	}
+
+	eq->ares = ares;
+	eq->name = name;
+	eq->data = data;
+	eq->q = q;
+
+	dns_timeouts(ares->ctx, -1, time(NULL));
+	return eq;
+}
+
+void emn_ares_query_free(struct emn_ares_query *eq)
+{
+	if (eq) {
+		if (eq->q)
+			dns_cancel(eq->ares->ctx, eq->q);
+		free(eq);
 	}
 }
-
