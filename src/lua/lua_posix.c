@@ -345,6 +345,35 @@ static int lp_close(lua_State *L)
 	return 1;
 }
 
+static int lp_daemon(lua_State *L)
+{
+	int nochdir = lua_tointeger(L, 1);
+	int noclose = lua_tointeger(L, 2);
+	
+	if (daemon(nochdir, noclose) < 0) {
+		lua_pushnil(L);
+		lua_pushstring(L, strerror(errno));
+		return 2;
+	}
+	
+	lua_pushinteger(L, 0);
+	return 1;
+}
+
+static int lp_usleep(lua_State *L)
+{
+	int usec = luaL_checkinteger(L, 1);
+	
+	if (usleep(usec) < 0) {
+		lua_pushnil(L);
+		lua_pushstring(L, strerror(errno));
+		return 2;
+	}
+	
+	lua_pushinteger(L, 0);
+	return 1;
+}
+
 static const struct luaL_Reg R[] = {
 	{"openlog", lp_openlog},
 	{"syslog", lp_syslog},
@@ -360,6 +389,8 @@ static const struct luaL_Reg R[] = {
 	{"kill", lp_kill},
 	{"fork", lp_fork},
 	{"close", lp_close},
+	{"daemon", lp_daemon},
+	{"usleep", lp_usleep},
 	{NULL, NULL}
 };
 

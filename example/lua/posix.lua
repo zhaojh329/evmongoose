@@ -12,6 +12,12 @@ end
 logger(posix.LOG_INFO, "syslog", "test")
 posix.closelog()
 
+-- Sleep 1s
+posix.usleep(1000 * 1000)
+
+-- run in the background
+-- posix.daemon()
+
 -- f: whether the file exists
 -- r: whether the file exists and grants read permissions
 -- w: whether the file exists and grants write permissions
