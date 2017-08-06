@@ -1,16 +1,16 @@
 #include "emn.h"
 #include "emn_ares.h"
 #include "emn_utils.h"
-#include <netdb.h>
 
 struct emn_ares {
 	ev_io ior;
 	ev_timer timer;
+	void *data;
+	emn_resolve_handler_t cb;
 	ares_channel channel;
 	struct ev_loop *loop;
 };
 
-int x = 0;
 static void emn_ares_destroy(struct emn_ares *ea)
 {
 	if (!ea)
@@ -21,22 +21,16 @@ static void emn_ares_destroy(struct emn_ares *ea)
 	free(ea);
 }
 
-void dns_callback (void *arg, int status, int timeouts, struct hostent *host) 
-{
-	char **p;
+void dns_callback (void *data, int status, int timeouts, struct hostent *host) 
+{	
+	struct emn_ares *ea = (struct emn_ares *)data;
 	
 	if (status != ARES_SUCCESS) {
 		fprintf(stderr, "%s\n", ares_strerror(status));
 		return;
 	}
 
-	printf("\n-------------------------------------\n");
-	for (p = host->h_addr_list; *p; p++) {
-		char addr_buf[46] = "??";
-		ares_inet_ntop(host->h_addrtype, *p, addr_buf, sizeof(addr_buf));
-		printf("%-32s%s", host->h_name, addr_buf);
-		puts("");
-	}
+	ea->cb(host, ea->data);
 }
 
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
@@ -57,7 +51,6 @@ int sock_create_callback(ares_socket_t socket_fd, int type, void *userdata)
 	return ARES_SUCCESS;
 }
 
-
 static void sock_state_cb(void *data, ares_socket_t socket_fd, int readable, int writable)
 {
 	struct emn_ares *ea = (struct emn_ares *)data;
@@ -65,7 +58,7 @@ static void sock_state_cb(void *data, ares_socket_t socket_fd, int readable, int
 		emn_ares_destroy(ea);
 }
 
-int emn_ares_resolve(struct ev_loop *loop, const char *name[], void *data)
+int emn_resolve(struct ev_loop *loop, const char *name[], emn_resolve_handler_t cb, void *data)
 {
 	int i;
 	struct emn_ares *ea = NULL;
@@ -79,6 +72,8 @@ int emn_ares_resolve(struct ev_loop *loop, const char *name[], void *data)
 
 	options.sock_state_cb_data = ea;
 	ea->loop = loop;
+	ea->cb = cb;
+	ea->data = data;
 	
 	if(ares_init_options(&ea->channel, &options, ARES_OPT_SOCK_STATE_CB) != ARES_SUCCESS) {
 		free(ea);
@@ -89,7 +84,7 @@ int emn_ares_resolve(struct ev_loop *loop, const char *name[], void *data)
 
 	for (i = 0; name[i]; i++) {
 		/* Initiate a host query by name */
-		ares_gethostbyname(ea->channel, name[i], AF_INET, dns_callback, NULL);
+		ares_gethostbyname(ea->channel, name[i], AF_INET, dns_callback, ea);
 	}
 	
 	return 0;

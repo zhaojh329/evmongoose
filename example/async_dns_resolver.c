@@ -64,6 +64,18 @@ int ares_sock_callback(ares_socket_t socket_fd, int type, void *userdata)
 	return ARES_SUCCESS;
 }
 
+void resolve_handler(struct hostent *host, void *data)
+{
+	char **p;
+
+	for (p = host->h_addr_list; *p; p++) {
+		char addr_buf[46] = "??";
+		ares_inet_ntop(host->h_addrtype, *p, addr_buf, sizeof(addr_buf));
+		printf("%-32s%s", host->h_name, addr_buf);
+		puts("");
+	}
+}
+
 int main(int argc, char **argv)
 {
 	struct ev_loop *loop = EV_DEFAULT;
@@ -77,7 +89,7 @@ int main(int argc, char **argv)
 	ev_signal_init(&sig_watcher, signal_cb, SIGINT);
 	ev_signal_start(loop, &sig_watcher);
 	
-	emn_ares_resolve(loop, name, NULL);
+	emn_resolve(loop, name, resolve_handler, NULL);
 		
 	ev_run(loop, 0);
 
