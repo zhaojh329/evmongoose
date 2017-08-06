@@ -1,109 +1,97 @@
 #include "emn.h"
 #include "emn_ares.h"
 #include "emn_utils.h"
+#include <netdb.h>
 
 struct emn_ares {
 	ev_io ior;
 	ev_timer timer;
-	struct dns_ctx *ctx;
+	ares_channel channel;
 	struct ev_loop *loop;
-	emn_ares_cb_t cb;
 };
 
-static void dnscb(struct dns_ctx *ctx, struct dns_rr_a4 *result, void *data)
+int x = 0;
+static void emn_ares_destroy(struct emn_ares *ea)
 {
-	struct emn_ares_query *eq = (struct emn_ares_query *)data;
-	eq->ares->cb(eq, result);
+	if (!ea)
+		return;
+	
+	ev_io_stop(ea->loop, &ea->ior);
+	ares_destroy(ea->channel);
+	free(ea);
 }
 
-static void ares_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents)
+void dns_callback (void *arg, int status, int timeouts, struct hostent *host) 
 {
+	char **p;
 	
+	if (status != ARES_SUCCESS) {
+		fprintf(stderr, "%s\n", ares_strerror(status));
+		return;
+	}
+
+	printf("\n-------------------------------------\n");
+	for (p = host->h_addr_list; *p; p++) {
+		char addr_buf[46] = "??";
+		ares_inet_ntop(host->h_addrtype, *p, addr_buf, sizeof(addr_buf));
+		printf("%-32s%s", host->h_name, addr_buf);
+		puts("");
+	}
 }
 
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
-	struct emn_ares *ares = (struct emn_ares *)w->data;
-	dns_ioevent(ares->ctx, time(NULL));
+	ares_channel channel = (ares_channel)w->data;
+	ares_process_fd(channel, w->fd, ARES_SOCKET_BAD);
 }
 
-struct emn_ares *emn_ares_init(struct ev_loop *loop, emn_ares_cb_t cb)
+int sock_create_callback(ares_socket_t socket_fd, int type, void *userdata)
 {
-	struct dns_ctx *ctx = NULL;
-	struct emn_ares *ares = NULL;
-
-	dns_init(NULL, 0);
-
-	ctx = dns_new(NULL);
-	if (!ctx)
-		return NULL;
-
-	ares = calloc(1, sizeof(struct emn_ares));
-	if (!ares) {
-		emn_log(LOG_ERR, "No mem");
-		goto err;
-	}
-
-	ares->loop = loop;
-	ares->ctx = ctx;
-	ares->cb = cb;
+	struct emn_ares *ea = (struct emn_ares *)userdata;
+	ares_channel channel = ea->channel;
 	
-	ev_io_init(&ares->ior, ev_read_cb, dns_open(ctx), EV_READ);
-	ares->ior.data = ares;
-	ev_io_start(loop, &ares->ior);
-
-	ev_timer_init(&ares->timer, ares_timeout_cb, 1, 1);
-	ev_timer_start(loop, &ares->timer);
-	return ares;
-err:
-	emn_ares_free(ares);
-	return NULL;
-}
-
-void emn_ares_free(struct emn_ares *ares)
-{
-	if (!ares)
-		return;
+	ev_io_init(&ea->ior, ev_read_cb, socket_fd, EV_READ);
+	ea->ior.data = channel;
+	ev_io_start(ea->loop, &ea->ior);
 	
-	if (ares->ctx)
-		dns_free(ares->ctx);
-
-	ev_io_stop(ares->loop, &ares->ior);
-	ev_timer_stop(ares->loop, &ares->timer);
-
-	free(ares);	
+	return ARES_SUCCESS;
 }
 
-struct emn_ares_query *emn_ares_resolve(struct emn_ares *ares, const char *name, void *data)
-{
-	struct dns_query *q = NULL;
-	struct emn_ares_query *eq = NULL;
 
-	eq = calloc(1, sizeof(struct emn_ares_query));
-	if (!eq)
-		return NULL;
+static void sock_state_cb(void *data, ares_socket_t socket_fd, int readable, int writable)
+{
+	struct emn_ares *ea = (struct emn_ares *)data;
+	if (!readable && !writable)
+		emn_ares_destroy(ea);
+}
+
+int emn_ares_resolve(struct ev_loop *loop, const char *name[], void *data)
+{
+	int i;
+	struct emn_ares *ea = NULL;
+	struct ares_options options = {
+		.sock_state_cb = sock_state_cb
+	};
+
+	ea = calloc(sizeof(struct emn_ares), 1);
+	if (!ea)
+		return -1;
+
+	options.sock_state_cb_data = ea;
+	ea->loop = loop;
 	
-	q = dns_submit_a4(ares->ctx, name, 0, dnscb, eq); 
-	if (!q) {
-		emn_log(LOG_ERR, "unable to submit query:%s", dns_strerror(dns_status(ares->ctx)));
-		free(eq);
-		return NULL;
+	if(ares_init_options(&ea->channel, &options, ARES_OPT_SOCK_STATE_CB) != ARES_SUCCESS) {
+		free(ea);
+		return -1;
 	}
+	
+	ares_set_socket_callback(ea->channel, sock_create_callback, ea);
 
-	eq->ares = ares;
-	eq->name = name;
-	eq->data = data;
-	eq->q = q;
-
-	dns_timeouts(ares->ctx, -1, time(NULL));
-	return eq;
+	for (i = 0; name[i]; i++) {
+		/* Initiate a host query by name */
+		ares_gethostbyname(ea->channel, name[i], AF_INET, dns_callback, NULL);
+	}
+	
+	return 0;
 }
 
-void emn_ares_query_free(struct emn_ares_query *eq)
-{
-	if (eq) {
-		if (eq->q)
-			dns_cancel(eq->ares->ctx, eq->q);
-		free(eq);
-	}
-}

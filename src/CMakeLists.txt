@@ -64,7 +64,7 @@ endif()
 
 add_library(emn SHARED ${SOURCE_FILES})
 set_target_properties(emn PROPERTIES VERSION ${EMN_VERSION_MAJOR}.${EMN_VERSION_MINOR})
-target_link_libraries(emn ${EXTRA_LIBS})
+target_link_libraries(emn ${EXTRA_LIBS} cares)
 
 # configure a header file to pass some of the CMake settings to the source code
 configure_file(emn_config.h.in ${CMAKE_CURRENT_BINARY_DIR}/emn_config.h)
