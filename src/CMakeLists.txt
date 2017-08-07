@@ -8,10 +8,10 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 find_package(Libev REQUIRED)
 find_package(HttpParser REQUIRED)
-find_package(UDNS REQUIRED)
+find_package(Libcares REQUIRED)
 
-include_directories(${LIBEV_INCLUDE_DIRS} ${HTTPPARSER_INCLUDE_DIRS} ${UDNS_INCLUDE_DIRS})
-set(EXTRA_LIBS ${LIBEV_LIBRARIES} ${HTTPPARSER_LIBRARIES} ${UDNS_LIBRARIES})
+include_directories(${LIBEV_INCLUDE_DIRS} ${HTTPPARSER_INCLUDE_DIRS} ${LIBCARES_INCLUDE_DIRS})
+set(EXTRA_LIBS ${LIBEV_LIBRARIES} ${HTTPPARSER_LIBRARIES} ${LIBCARES_LIBRARIES})
 set(SOURCE_FILES emn.c emn_str.c emn_buf.c emn_utils.c emn_http.c emn_ares.c)
 
 # Check SSL libraries. TODO support OpenSSL, CyaSSL
