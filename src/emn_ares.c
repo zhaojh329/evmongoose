@@ -17,74 +17,86 @@ static void emn_ares_destroy(struct emn_ares *ea)
 		return;
 	
 	ev_io_stop(ea->loop, &ea->ior);
+	ev_timer_stop(ea->loop, &ea->timer);
 	ares_destroy(ea->channel);
 	free(ea);
 }
 
-void dns_callback (void *data, int status, int timeouts, struct hostent *host) 
-{	
+static void resolve_callback (void *data, int status, int timeouts, struct hostent *host) 
+{
 	struct emn_ares *ea = (struct emn_ares *)data;
-	
+
+	if (status == ARES_EDESTRUCTION)
+		return;
+
 	if (status != ARES_SUCCESS) {
-		fprintf(stderr, "%s\n", ares_strerror(status));
+		emn_log(LOG_ERR, "ares:%s", ares_strerror(status));
 		return;
 	}
 
-	ea->cb(host, ea->data);
+	ea->cb(EMN_ARES_SUCCESS, host, ea->data);
 }
 
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
-	ares_channel channel = (ares_channel)w->data;
+	fd_set read_fds, write_fds;
+	struct emn_ares *ea = (struct emn_ares *)w->data;
+	ares_channel channel = ea->channel;
+
 	ares_process_fd(channel, w->fd, ARES_SOCKET_BAD);
+
+	FD_ZERO(&read_fds);
+	FD_ZERO(&write_fds);
+	
+	if (ares_fds(channel, &read_fds, &write_fds) == 0)
+		emn_ares_destroy(ea);
+}
+
+static void ev_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	struct emn_ares *ea = (struct emn_ares *)w->data;
+	
+	ea->cb(EMN_ARES_TIMEOUT, NULL, ea->data);
+	emn_ares_destroy(ea);
 }
 
 int sock_create_callback(ares_socket_t socket_fd, int type, void *userdata)
 {
 	struct emn_ares *ea = (struct emn_ares *)userdata;
-	ares_channel channel = ea->channel;
 	
 	ev_io_init(&ea->ior, ev_read_cb, socket_fd, EV_READ);
-	ea->ior.data = channel;
+	ea->ior.data = ea;
 	ev_io_start(ea->loop, &ea->ior);
 	
 	return ARES_SUCCESS;
-}
-
-static void sock_state_cb(void *data, ares_socket_t socket_fd, int readable, int writable)
-{
-	struct emn_ares *ea = (struct emn_ares *)data;
-	if (!readable && !writable)
-		emn_ares_destroy(ea);
 }
 
 int emn_resolve(struct ev_loop *loop, const char *name[], emn_resolve_handler_t cb, void *data)
 {
 	int i;
 	struct emn_ares *ea = NULL;
-	struct ares_options options = {
-		.sock_state_cb = sock_state_cb
-	};
 
 	ea = calloc(sizeof(struct emn_ares), 1);
 	if (!ea)
 		return -1;
 
-	options.sock_state_cb_data = ea;
 	ea->loop = loop;
 	ea->cb = cb;
 	ea->data = data;
 	
-	if(ares_init_options(&ea->channel, &options, ARES_OPT_SOCK_STATE_CB) != ARES_SUCCESS) {
+	if(ares_init(&ea->channel) != ARES_SUCCESS) {
 		free(ea);
 		return -1;
 	}
 	
 	ares_set_socket_callback(ea->channel, sock_create_callback, ea);
 
+	ev_timer_init(&ea->timer, ev_timeout_cb, 2.0, 0);
+	ea->timer.data = ea;
+	ev_timer_start(loop, &ea->timer);
+	
 	for (i = 0; name[i]; i++) {
-		/* Initiate a host query by name */
-		ares_gethostbyname(ea->channel, name[i], AF_INET, dns_callback, ea);
+		ares_gethostbyname(ea->channel, name[i], AF_INET, resolve_callback, ea);
 	}
 	
 	return 0;
