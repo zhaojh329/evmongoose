@@ -1,7 +1,6 @@
 #include "emn.h"
 #include <stdio.h>
 
-#if 1
 static void signal_cb(struct ev_loop *loop, ev_signal *w, int revents)
 {
 	printf("Got signal: %d\n", w->signum);
@@ -70,8 +69,6 @@ int main(int argc, char **argv)
 		.ssl_cert = "server.pem",
 		.ssl_key = "server.key"
 	};
-
-	//signal(SIGPIPE, SIG_IGN);
 	
 	openlog(NULL, LOG_PERROR | LOG_PID, 0);
 	
@@ -98,20 +95,4 @@ err:
 	return 0;
 }
 
-#else
-int main(int argc, char **argv)
-{
-	char *p;
-	char *path = "a.html";
-
-
-	p = rindex(path, '.');
-	if (!p || !*p)
-		return 1;
-
-	printf("%c %zd\n", *(p + 1), strlen(path) + path - p - 1);
-	return 0;
-
-}
-#endif
 
