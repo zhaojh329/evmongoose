@@ -225,7 +225,7 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 static int parse_address(const char *address, struct sockaddr_in *sin,
 					int *proto, char *host, size_t host_len)
 {
-	int ret = 0;
+	int ret = 1;
 	char *p;
 	const char *str;
 	uint16_t port = 0;
