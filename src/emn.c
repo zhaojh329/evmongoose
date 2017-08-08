@@ -30,6 +30,21 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 	ssize_t len;
 	struct emn_client *cli = (struct emn_client *)w->data;
 
+	if (cli->flags & EMN_FLAGS_CONNECTING) {
+		int err = 0;
+		socklen_t slen = sizeof(err);
+	
+		getsockopt(w->fd, SOL_SOCKET, SO_ERROR, (char *) &err, &slen);
+		
+		cli->flags &= ~EMN_FLAGS_CONNECTING;
+		emn_call(cli, NULL, EMN_EV_CONNECT, &err);
+
+		if (err) {
+			emn_client_destroy(cli);
+			return;
+		}
+	}
+
 	ebuf_init(&ebuf, EMN_RECV_BUFFER_SIZE);
 
 	if (cli->flags & EMN_FLAGS_SSL)
@@ -59,24 +74,6 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 	struct emn_client *cli = (struct emn_client *)w->data;
 	struct ebuf *sbuf = &cli->sbuf;
 	ssize_t len = -1;
-
-	if (cli->flags & EMN_FLAGS_CONNECTING) {
-		int err = 0;
-		socklen_t slen = sizeof(err);
-		int ret = getsockopt(w->fd, SOL_SOCKET, SO_ERROR, (char *) &err, &slen);
-		if (ret != 0) {
-			err = 1;
-		} else if (err == EAGAIN || err == EWOULDBLOCK) {
-			err = 0;
-		}
-		
-		cli->flags &= ~EMN_FLAGS_CONNECTING;
-		emn_call(cli, NULL, EMN_EV_CONNECT, &err);
-		if (err)
-			emn_client_destroy(cli);
-		ev_io_stop(loop, &cli->iow);
-		return;
-	}
 
 	if (cli->flags & EMN_FLAGS_SSL)
 #if (EMN_USE_OPENSSL)		
@@ -374,31 +371,29 @@ err:
 
 static struct emn_client *emn_do_connect(struct emn_client *cli)
 {
-	int sock;
-
-	sock = socket(cli->sin.sin_family,
-			(cli->flags & EMN_FLAGS_UDP ? SOCK_DGRAM : SOCK_STREAM) | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-	if (sock < 0) {
+	cli->sock = socket(cli->sin.sin_family, (cli->flags & EMN_FLAGS_UDP ? SOCK_DGRAM : SOCK_STREAM)  |
+					SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+	if (cli->sock < 0) {
 		emn_log(LOG_ERR, "can't create socket:%s", strerror(errno));
 		goto err;
 	}
 
-	if (connect(sock, (struct sockaddr *)&cli->sin, sizeof(cli->sin)) < 0) {
+	if (connect(cli->sock, (struct sockaddr *)&cli->sin, sizeof(cli->sin)) < 0) {
 		if (errno != EINPROGRESS) {
-			emn_log(LOG_ERR, "can't connect:%s", strerror(errno));
+			emn_call(cli, NULL, EMN_EV_CONNECT, &errno);
 			goto err;
 		}
+		cli->flags |= EMN_FLAGS_CONNECTING;
+	} else {
+		emn_call(cli, NULL, EMN_EV_CONNECT, &errno);
 	}
 
-	cli->flags |= EMN_FLAGS_CONNECTING;
-
-	ev_io_init(&cli->ior, ev_read_cb, sock, EV_READ);
+	ev_io_init(&cli->ior, ev_read_cb, cli->sock, EV_READ);
 	cli->ior.data = cli;
 	ev_io_start(cli->loop, &cli->ior);
 	
-	ev_io_init(&cli->iow, ev_write_cb, sock, EV_WRITE);
+	ev_io_init(&cli->iow, ev_write_cb, cli->sock, EV_WRITE);
 	cli->iow.data = cli;
-	ev_io_start(cli->loop, &cli->iow);
 
 	return cli;
 err:

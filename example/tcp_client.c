@@ -11,7 +11,8 @@ int event_handler(struct emn_client *cli, int event, void *data)
 {
 	switch (event) {
 	case EMN_EV_CONNECT: {
-			printf("connect:%p\n", cli);
+			int err = *(int *)data;
+			printf("connect:%p %s\n", cli, strerror(err));
 			break;
 		}
 	case EMN_EV_CLOSE:
@@ -29,7 +30,7 @@ int main(int argc, char **argv)
 	struct ev_loop *loop = EV_DEFAULT;
 	ev_signal sig_watcher;
 	struct emn_client *cli = NULL;
-	const char *address = "www.baidu.com:8080";
+	const char *address = "192.168.0.100:9990";
 	
 	openlog(NULL, LOG_PERROR | LOG_PID, 0);
 	
@@ -41,13 +42,11 @@ int main(int argc, char **argv)
 	cli = emn_connect(loop, address, event_handler);
 	if (!cli) {
 		printf("emn_connect failed\n");
-		goto err;
+		return -1;
 	}
 	
 	ev_run(loop, 0);
 
-err:	
-	emn_client_destroy(cli);
 	printf("exit...\n");
 
 	return 0;
