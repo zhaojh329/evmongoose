@@ -186,8 +186,6 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 		wolfSSL_set_fd(cli->ssl, cli->sock);
 #endif
 
-		
-
 #if (EMN_USE_OPENSSL)
 		if (!SSL_accept(cli->ssl)) {
 			emn_log(LOG_ERR, "SSL_accept failed");
