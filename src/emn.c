@@ -51,7 +51,7 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 		cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
 	}
 
-	ev_io_start(cli->srv->loop, &cli->iow);
+	ev_io_start(loop, &cli->iow);
 }
 
 static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
