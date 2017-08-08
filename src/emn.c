@@ -45,6 +45,31 @@ static inline int check_connect(struct emn_client *cli)
 	return 0;
 }
 
+#if (EMN_SSL_ENABLED)
+#if (EMN_USE_OPENSSL)
+static inline ssize_t emn_ssl_read(SSL *ssl, void *buf, size_t count)
+{
+	return SSL_read(ssl, buf, count);
+}
+
+static inline ssize_t emn_ssl_write(SSL *ssl, void *buf, size_t count)
+{
+	return SSL_write(ssl, buf, count);
+}
+
+#elif (EMN_USE_CYASSL)
+static inline ssize_t emn_ssl_read(WOLFSSL *ssl, void *buf, size_t count)
+{
+	return wolfSSL_read(ssl, buf, count);
+}
+
+static inline ssize_t emn_ssl_write(WOLFSSL *ssl, void *buf, size_t count)
+{
+	return wolfSSL_write(ssl, buf, count);
+}
+#endif
+#endif
+
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
 	ssize_t len;
@@ -56,15 +81,12 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 
 	ebuf_init(&ebuf, EMN_RECV_BUFFER_SIZE);
 
+#if (EMN_SSL_ENABLED)
 	if (cli->flags & EMN_FLAGS_SSL)
-#if (EMN_USE_OPENSSL)		
-		len = SSL_read(cli->ssl, ebuf.buf, ebuf.size);
-#elif (EMN_USE_CYASSL)
-		len = wolfSSL_read(cli->ssl, ebuf.buf, ebuf.size);
-#endif
+		len = emn_ssl_read(cli->ssl, ebuf.buf, ebuf.size);
 	else
+#endif
 		len = read(w->fd, ebuf.buf, ebuf.size);
-	
 	if (len > 0) {
 		ebuf.len = len;
 		emn_call(cli, NULL, EMN_EV_RECV, &ebuf);
@@ -86,16 +108,13 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 
 	if (check_connect(cli))
 		return;
-	
+
+#if (EMN_SSL_ENABLED)
 	if (cli->flags & EMN_FLAGS_SSL)
-#if (EMN_USE_OPENSSL)		
-		len = SSL_write(cli->ssl, sbuf->buf, sbuf->len);
-#elif (EMN_USE_CYASSL)
-		len = wolfSSL_write(cli->ssl, sbuf->buf, sbuf->len);
-#endif
+		len = emn_ssl_write(cli->ssl, sbuf->buf, sbuf->len);
 	else
-		len = write(w->fd, sbuf->buf, sbuf->len);
-	
+#endif
+		len = write(w->fd, sbuf->buf, sbuf->len);	
 	if (len > 0)
 		ebuf_remove(sbuf, len);
 
@@ -538,7 +557,7 @@ void emn_client_destroy(struct emn_client *cli)
 		if (cli->data)
 			free(cli->data);
 
-#if (EMN_SSL_ENABLED)		
+#if (EMN_SSL_ENABLED)
 		if (cli->flags & EMN_FLAGS_SSL)
 #if (EMN_USE_OPENSSL)			
 			SSL_free(cli->ssl);
