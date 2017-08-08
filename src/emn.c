@@ -404,15 +404,15 @@ err:
 static void resolve_handler(int status, struct hostent *host, void *data)
 {
 	char **p;
+	int err = -1;
 
 	struct emn_client *cli = (struct emn_client *)data;
 	
 	cli->flags &= ~EMN_FLAGS_RESOLVING;
 	
 	if (status == EMN_ARES_TIMEOUT) {
-		//: TODO
-		printf("resolve timeout\n");
-		return;
+		err = ETIMEDOUT;
+		goto err;
 	}
 
 	for (p = host->h_addr_list; *p; p++) {
@@ -420,6 +420,10 @@ static void resolve_handler(int status, struct hostent *host, void *data)
 		emn_do_connect(cli);
 		return;
 	}
+
+err:
+	emn_call(cli, NULL, EMN_EV_CONNECT, &err);
+	emn_client_destroy(cli);
 }
 
 struct emn_client *emn_connect(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler)
