@@ -55,7 +55,7 @@ int main(int argc, char **argv)
 	struct ev_loop *loop = EV_DEFAULT;
 	ev_signal sig_watcher;
 	struct emn_server *srv = NULL;
-	const char *address = "192.168.0.100:8000";
+	const char *address = "8000";
 	struct emn_bind_opts opts = {
 		.ssl_cert = "server.pem",
 		.ssl_key = "server.key"

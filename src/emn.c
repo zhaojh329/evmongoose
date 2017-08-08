@@ -177,24 +177,24 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 #elif (EMN_USE_CYASSL)
 		cli->ssl = wolfSSL_new(srv->ssl_ctx);
 #endif
-		if (!cli->ssl) {
-			emn_client_destroy(cli);
-			return;
-		}
+		if (!cli->ssl)
+			goto err;
+		
 #if (EMN_USE_OPENSSL)
 		SSL_set_fd(cli->ssl, cli->sock);
 #elif (EMN_USE_CYASSL)
 		wolfSSL_set_fd(cli->ssl, cli->sock);
 #endif
-		cli->flags |= EMN_FLAGS_SSL;
-#if (EMN_USE_OPENSSL)		
-		if (!SSL_accept(cli->ssl)) {
 
+		
+
+#if (EMN_USE_OPENSSL)
+		if (!SSL_accept(cli->ssl)) {
 			emn_log(LOG_ERR, "SSL_accept failed");
-			emn_client_destroy(cli);
-			return;
+			goto err;
 		}
-#endif		
+#endif
+		cli->flags |= EMN_FLAGS_SSL;
 	}
 #endif
 
@@ -208,6 +208,10 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	cli->iow.data = cli;
 
 	emn_call(cli, NULL, EMN_EV_ACCEPT, &sin);
+	return;
+	
+err:
+	emn_client_destroy(cli);
 }
 
 /*
