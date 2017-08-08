@@ -47,8 +47,8 @@ static inline int check_connect(struct emn_client *cli)
 
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
-	struct ebuf ebuf;
 	ssize_t len;
+	static struct ebuf ebuf;
 	struct emn_client *cli = (struct emn_client *)w->data;
 
 	if (check_connect(cli))
