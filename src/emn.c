@@ -369,6 +369,19 @@ err:
 	return NULL;
 }
 
+static void cli_ev_timer_cb(struct ev_loop *loop, ev_timer *w, int revents)
+{
+	struct emn_client *cli = (struct emn_client *)w->data;
+	
+	if (cli->flags & EMN_FLAGS_CONNECTING) {
+		int err = ETIMEDOUT;
+		
+		cli->flags &= ~EMN_FLAGS_CONNECTING;
+		emn_call(cli, NULL, EMN_EV_CONNECT, &err);
+		emn_client_destroy(cli);
+	}
+} 
+
 static struct emn_client *emn_do_connect(struct emn_client *cli)
 {
 	cli->sock = socket(cli->sin.sin_family, (cli->flags & EMN_FLAGS_UDP ? SOCK_DGRAM : SOCK_STREAM)  |
@@ -394,6 +407,12 @@ static struct emn_client *emn_do_connect(struct emn_client *cli)
 	
 	ev_io_init(&cli->iow, ev_write_cb, cli->sock, EV_WRITE);
 	cli->iow.data = cli;
+
+	if (cli->flags & EMN_FLAGS_CONNECTING) {
+		ev_timer_init(&cli->timer, cli_ev_timer_cb, 3.0, 0);
+		cli->timer.data = cli;
+		ev_timer_start(cli->loop, &cli->timer);
+	}
 
 	return cli;
 err:
@@ -457,7 +476,7 @@ struct emn_client *emn_connect(struct ev_loop *loop, const char *address, emn_ev
 		return cli;
 	}
 	
-	return emn_do_connect(cli);	
+	return emn_do_connect(cli);
 err:
 	emn_client_destroy(cli);
 	return NULL;	
