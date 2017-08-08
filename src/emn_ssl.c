@@ -21,7 +21,7 @@ SSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
 		method = SSLv23_client_method();
 
 	/* creates a new SSL_CTX object */
-	SSL_CTX_new(method);
+	ctx = SSL_CTX_new(method);
 	if (!ctx) {
 		emn_log(LOG_ERR, "Failed to create SSL context");
 		return NULL;
