@@ -24,26 +24,35 @@ inline int emn_call(struct emn_client *cli, emn_event_handler_t handler, int eve
 	return 0;
 }
 
+static inline int check_connect(struct emn_client *cli)
+{
+	if (cli->flags & EMN_FLAGS_CONNECTING) {
+		int err = 0;
+		socklen_t slen = sizeof(err);
+	
+		getsockopt(cli->sock, SOL_SOCKET, SO_ERROR, (char *) &err, &slen);
+		
+		cli->flags &= ~EMN_FLAGS_CONNECTING;
+		emn_call(cli, NULL, EMN_EV_CONNECT, &err);
+
+		if (err)
+			emn_client_destroy(cli);
+
+		ev_io_stop(cli->loop, &cli->iow);
+		return 1;
+	}
+
+	return 0;
+}
+
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
 	struct ebuf ebuf;
 	ssize_t len;
 	struct emn_client *cli = (struct emn_client *)w->data;
 
-	if (cli->flags & EMN_FLAGS_CONNECTING) {
-		int err = 0;
-		socklen_t slen = sizeof(err);
-	
-		getsockopt(w->fd, SOL_SOCKET, SO_ERROR, (char *) &err, &slen);
-		
-		cli->flags &= ~EMN_FLAGS_CONNECTING;
-		emn_call(cli, NULL, EMN_EV_CONNECT, &err);
-
-		if (err) {
-			emn_client_destroy(cli);
-			return;
-		}
-	}
+	if (check_connect(cli))
+		return;
 
 	ebuf_init(&ebuf, EMN_RECV_BUFFER_SIZE);
 
@@ -75,6 +84,9 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 	struct ebuf *sbuf = &cli->sbuf;
 	ssize_t len = -1;
 
+	if (check_connect(cli))
+		return;
+	
 	if (cli->flags & EMN_FLAGS_SSL)
 #if (EMN_USE_OPENSSL)		
 		len = SSL_write(cli->ssl, sbuf->buf, sbuf->len);
@@ -98,7 +110,7 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 	}
 
 	if (sbuf->len == 0) {
-		ev_io_stop(cli->srv->loop, &cli->iow);
+		ev_io_stop(cli->loop, &cli->iow);
 		
 		if (cli->send_fd > 0) {
 			struct stat st;
@@ -263,7 +275,7 @@ size_t emn_send(struct emn_client *cli, const void *buf, int len)
 {
 	len = ebuf_append(&cli->sbuf, buf, len);
 	if (len > 0)
-	    ev_io_start(cli->srv->loop, &cli->iow);
+	    ev_io_start(cli->loop, &cli->iow);
 	return len;
 }
 
@@ -407,6 +419,7 @@ static struct emn_client *emn_do_connect(struct emn_client *cli)
 	
 	ev_io_init(&cli->iow, ev_write_cb, cli->sock, EV_WRITE);
 	cli->iow.data = cli;
+	ev_io_start(cli->loop, &cli->iow);
 
 	if (cli->flags & EMN_FLAGS_CONNECTING) {
 		ev_timer_init(&cli->timer, cli_ev_timer_cb, 3.0, 0);

@@ -15,8 +15,15 @@ int event_handler(struct emn_client *cli, int event, void *data)
 			printf("connect:%p %s\n", cli, strerror(err));
 			break;
 		}
+	case EMN_EV_RECV: {
+			struct ebuf *eb = (struct ebuf *)data;
+			printf("recv: %.*s\n", (int)eb->len, eb->buf);
+
+			emn_printf(cli, "%f: I'm emn", emn_time());
+			break;
+		}
 	case EMN_EV_CLOSE:
-		printf("close:%p\n", cli);
+		printf("%p closed\n", cli);
 		break;
     default:
 		break;
@@ -30,7 +37,7 @@ int main(int argc, char **argv)
 	struct ev_loop *loop = EV_DEFAULT;
 	ev_signal sig_watcher;
 	struct emn_client *cli = NULL;
-	const char *address = "192.168.0.100:9990";
+	const char *address = "192.168.0.101:8080";
 	
 	openlog(NULL, LOG_PERROR | LOG_PID, 0);
 	

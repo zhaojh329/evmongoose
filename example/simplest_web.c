@@ -15,15 +15,6 @@ int event_handler(struct emn_client *cli, int event, void *data)
 	        printf("new conn from %s:%d\n", inet_ntoa(sin->sin_addr), ntohs(sin->sin_port));
         	break;
     	}
-	case EMN_EV_RECV: {
-#if 0
-			struct ebuf *rbuf = emn_get_rbuf(cli);
-			int len = *(int *)data;
-			printf("recv %d: [%.*s]\n", len, (int)rbuf->len, rbuf->buf);
-			//ebuf_remove(rbuf, len);
-#endif			
-			break;
-		}
 	case EMN_EV_HTTP_REQUEST: {
 #if 0
 			struct http_message *hm = (struct http_message *)data;
@@ -64,7 +55,7 @@ int main(int argc, char **argv)
 	struct ev_loop *loop = EV_DEFAULT;
 	ev_signal sig_watcher;
 	struct emn_server *srv = NULL;
-	const char *address = "x:8000";
+	const char *address = "192.168.0.100:8000";
 	struct emn_bind_opts opts = {
 		.ssl_cert = "server.pem",
 		.ssl_key = "server.key"
