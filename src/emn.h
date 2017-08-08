@@ -26,6 +26,7 @@
 #define EMN_FLAGS_SSL				(1 << 2)	/* SSL is enabled on the server or client */
 #define EMN_FLAGS_UDP				(1 << 3)	/* The server or client using the UDP protocol */
 #define EMN_FLAGS_CONNECTING		(1 << 4)	/* connect() call in progress */
+#define EMN_FLAGS_RESOLVING			(1 << 5)	/* Waiting for async resolver */
 
 struct emn_server;
 struct emn_client;

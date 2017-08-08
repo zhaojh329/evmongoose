@@ -33,7 +33,8 @@ struct emn_server {
 struct emn_client {
 	emn_event_handler_t handler;
 	emn_event_handler_t proto_handler;
-	
+
+	struct sockaddr_in sin;
 	int sock;
 	int send_fd;	/* File descriptor of File to send */
 	ev_io ior;

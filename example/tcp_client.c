@@ -14,6 +14,9 @@ int event_handler(struct emn_client *cli, int event, void *data)
 			printf("connect:%p\n", cli);
 			break;
 		}
+	case EMN_EV_CLOSE:
+		printf("close:%p\n", cli);
+		break;
     default:
 		break;
     }
@@ -26,7 +29,7 @@ int main(int argc, char **argv)
 	struct ev_loop *loop = EV_DEFAULT;
 	ev_signal sig_watcher;
 	struct emn_client *cli = NULL;
-	const char *address = "192.168.0.101:8080";
+	const char *address = "www.baidu.com:8080";
 	
 	openlog(NULL, LOG_PERROR | LOG_PID, 0);
 	

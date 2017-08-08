@@ -102,3 +102,9 @@ int emn_resolve(struct ev_loop *loop, const char *name[], emn_resolve_handler_t 
 	return 0;
 }
 
+int emn_resolve_single(struct ev_loop *loop, const char *name, emn_resolve_handler_t cb, void *data)
+{
+	const char *names[] = {name, NULL};
+	return emn_resolve(loop, names, cb, data);
+}
+

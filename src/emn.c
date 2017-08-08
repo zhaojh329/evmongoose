@@ -201,15 +201,29 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 	emn_call(cli, NULL, EMN_EV_ACCEPT, &sin);
 }
 
-static int parse_address(const char *address, struct sockaddr_in *sin, int *proto)
+/*
+ * Address format: [PROTO://][HOST]:PORT
+ *
+ * HOST could be IPv4/IPv6 address or a host name.
+ * `host` is a destination buffer to hold parsed HOST part.
+ * `proto` is a returned socket type, either SOCK_STREAM or SOCK_DGRAM
+ *
+ * Return:
+ *   -1	on parse error
+ *   0	if HOST needs DNS lookup
+ *   1	on success
+ */
+static int parse_address(const char *address, struct sockaddr_in *sin,
+					int *proto, char *host, size_t host_len)
 {
-	const char *str;
+	int ret = 0;
 	char *p;
-	char host[16] = "";
+	const char *str;
 	uint16_t port = 0;
 
 	assert(address);
-	
+
+	memset(host, 0, host_len);
 	memset(sin, 0, sizeof(struct sockaddr_in));
 	
 	sin->sin_family = AF_INET;
@@ -225,13 +239,14 @@ static int parse_address(const char *address, struct sockaddr_in *sin, int *prot
 
 	p = strchr(str, ':');
 	if (p) {
-		if (p - str > 15)
+		if (p - str > host_len)
 			return -1;
 		
 		memcpy(host, str, p - str);
 
 		if (strcmp(host, "*")) {	
-			if (inet_pton(AF_INET, host, &sin->sin_addr) <= 0)
+			ret = inet_pton(AF_INET, host, &sin->sin_addr);
+			if (ret < 0)
 				return -1;
 		}
 		str = p + 1;
@@ -243,7 +258,7 @@ static int parse_address(const char *address, struct sockaddr_in *sin, int *prot
 
 	sin->sin_port = htons(port);
 	
-	return 0;
+	return ret;
 }
 
 
@@ -284,13 +299,16 @@ struct emn_server *emn_bind(struct ev_loop *loop, const char *address, emn_event
 struct emn_server *emn_bind_opt(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler, 
 								struct emn_bind_opts *opts)
 {
+	int ret = -1;
 	struct sockaddr_in sin;
 	struct emn_server *srv = NULL;
 	int sock;
 	int proto;
 	int on = 1;
-	
-	if (parse_address(address, &sin, &proto) < 0) {
+	char host[128];
+
+	ret = parse_address(address, &sin, &proto, host, sizeof(host));
+	if (ret <= 0) {
 		emn_log(LOG_ERR, "parse address failed");
 		return NULL;
 	}
@@ -354,17 +372,67 @@ err:
 	return NULL;
 }
 
+static struct emn_client *emn_do_connect(struct emn_client *cli)
+{
+	int sock;
+
+	sock = socket(cli->sin.sin_family,
+			(cli->flags & EMN_FLAGS_UDP ? SOCK_DGRAM : SOCK_STREAM) | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
+	if (sock < 0) {
+		emn_log(LOG_ERR, "can't create socket:%s", strerror(errno));
+		goto err;
+	}
+
+	if (connect(sock, (struct sockaddr *)&cli->sin, sizeof(cli->sin)) < 0) {
+		if (errno != EINPROGRESS) {
+			emn_log(LOG_ERR, "can't connect:%s", strerror(errno));
+			goto err;
+		}
+	}
+
+	cli->flags |= EMN_FLAGS_CONNECTING;
+
+	ev_io_init(&cli->ior, ev_read_cb, sock, EV_READ);
+	cli->ior.data = cli;
+	ev_io_start(cli->loop, &cli->ior);
+	
+	ev_io_init(&cli->iow, ev_write_cb, sock, EV_WRITE);
+	cli->iow.data = cli;
+	ev_io_start(cli->loop, &cli->iow);
+
+	return cli;
+err:
+	emn_client_destroy(cli);
+	return NULL;	
+}
+
+static void resolve_handler(int status, struct hostent *host, void *data)
+{
+	char **p;
+
+	struct emn_client *cli = (struct emn_client *)data;
+	
+	cli->flags &= ~EMN_FLAGS_RESOLVING;
+	
+	if (status == EMN_ARES_TIMEOUT) {
+		//: TODO
+		printf("resolve timeout\n");
+		return;
+	}
+
+	for (p = host->h_addr_list; *p; p++) {
+		memcpy(&cli->sin.sin_addr, *p, sizeof(struct in_addr));
+		emn_do_connect(cli);
+		return;
+	}
+}
+
 struct emn_client *emn_connect(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler)
 {
-	struct sockaddr_in sin;
+	int ret = -1;
 	struct emn_client *cli = NULL;
-	int sock;
 	int proto;
-	
-	if (parse_address(address, &sin, &proto) < 0) {
-		emn_log(LOG_ERR, "parse address failed");
-		return NULL;
-	}
+	char host[128];
 
 	cli = calloc(1, sizeof(struct emn_client));
 	if (!cli) {
@@ -372,32 +440,25 @@ struct emn_client *emn_connect(struct ev_loop *loop, const char *address, emn_ev
 		return NULL;
 	}
 
-	sock = socket(sin.sin_family, proto | SOCK_NONBLOCK | SOCK_CLOEXEC, 0);
-	if (sock < 0) {
-		emn_log(LOG_ERR, "can't create socket:%s", strerror(errno));
+	cli->loop = loop;
+	cli->handler = ev_handler;
+
+	ret = parse_address(address, &cli->sin, &proto, host, sizeof(host));
+	if (ret < 0) {
+		emn_log(LOG_ERR, "parse address failed");
 		goto err;
 	}
 
-	if (connect(sock, (struct sockaddr *)&sin, sizeof(sin)) < 0) {
-		if (errno != EINPROGRESS) {
-			emn_log(LOG_ERR, "can't connect:%s", strerror(errno));
-			goto err;
-		}
-	}
+	if (proto == SOCK_DGRAM)
+		cli->flags |=  EMN_FLAGS_UDP;
 
-	cli->loop = loop;
-	cli->flags |= EMN_FLAGS_CONNECTING;
-	cli->handler = ev_handler;
+	if (ret == 0) {
+		cli->flags |= EMN_FLAGS_RESOLVING;
+		emn_resolve_single(loop, host, resolve_handler, cli);
+		return cli;
+	}
 	
-	ev_io_init(&cli->ior, ev_read_cb, sock, EV_READ);
-	cli->ior.data = cli;
-	ev_io_start(loop, &cli->ior);
-	
-	ev_io_init(&cli->iow, ev_write_cb, sock, EV_WRITE);
-	cli->iow.data = cli;
-	ev_io_start(loop, &cli->iow);
-	
-	return cli;	
+	return emn_do_connect(cli);	
 err:
 	emn_client_destroy(cli);
 	return NULL;	
