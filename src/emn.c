@@ -97,6 +97,7 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 		ebuf_remove(sbuf, len);
 
 	if (len < 0) {
+		emn_log(LOG_ERR, "emn: write error:%s", strerror(errno));
 		emn_client_destroy(cli);
 		return;
 	}
@@ -126,8 +127,10 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 			else
 #endif
 				len = write(w->fd, fb, st.st_size);
-			if (len < 0)
+			if (len < 0) {
+				emn_log(LOG_ERR, "emn: write error:%s", strerror(errno));
 				cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
+			}
 		}
 
 		if ((cli->flags & EMN_FLAGS_SEND_AND_CLOSE) || (cli->flags & EMN_FLAGS_CLOSE_IMMEDIATELY))
