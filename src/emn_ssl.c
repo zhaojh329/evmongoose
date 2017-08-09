@@ -2,11 +2,6 @@
 #include "emn_utils.h"
 
 #if (EMN_USE_OPENSSL)
-static int print_err_cb(const char *str, size_t len, void *fp)
-{
-	syslog(LOG_ERR, "%s", str);
-	return 0;
-}
 
 SSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
 {
@@ -29,7 +24,7 @@ SSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
 
 	/* loads the first certificate stored in file into ctx */
 	if (!SSL_CTX_use_certificate_file(ctx, cert, SSL_FILETYPE_PEM)) {
-		ERR_print_errors_cb(print_err_cb, NULL);
+		emn_log(LOG_ERR, "OpenSSL Error: loading certificate file failed");
 		goto err;
 	}
 		
@@ -41,7 +36,7 @@ SSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
 	 * pair (RSA/DSA) is installed, the last item installed will be checked.
 	 */
 	if (!SSL_CTX_use_RSAPrivateKey_file(ctx, key, SSL_FILETYPE_PEM)) {
-		ERR_print_errors_cb(print_err_cb, NULL);
+		emn_log(LOG_ERR, "OpenSSL Error: loading key failed");
 		goto err;
 	}
 	
@@ -61,13 +56,7 @@ int emn_ssl_accept(struct emn_client *cli)
 	SSL_set_fd(cli->ssl, cli->sock);
 
 	if (!SSL_accept(cli->ssl)) {
-		char ebuf[256];
-		unsigned long e = ERR_get_error();
-	
-		while(e) {
-			emn_log(LOG_ERR, "OpenSSL Error: %s", ERR_error_string(e, ebuf));
-			e = ERR_get_error();
-		}
+		emn_log(LOG_ERR, "SSL_accept Error: %s", ERR_reason_error_string(ERR_get_error()));
 		return -1;
 	}
 
@@ -76,45 +65,43 @@ int emn_ssl_accept(struct emn_client *cli)
 
 ssize_t emn_ssl_read(SSL *ssl, void *buf, size_t count)
 {
-	int ret = SSL_read(ssl, buf, count);
-	if(ret < 0) {
-		int err = SSL_get_error(ssl, ret);	
-		if(err == SSL_ERROR_WANT_READ) {
+	int nread = SSL_read(ssl, buf, count);
+	if(nread < 0) {
+		int err = SSL_get_error(ssl, nread);
+
+		switch(err) {
+		case SSL_ERROR_WANT_READ:
+		case SSL_ERROR_WANT_WRITE:
 			errno = EAGAIN;
-		} else if (err == SSL_ERROR_WANT_WRITE) {
-			errno = EAGAIN;			
-		} else if (err != SSL_ERROR_SYSCALL) {
-			char ebuf[256];
-			unsigned long e = ERR_get_error();
-			
-			while(e) {
-				emn_log(LOG_ERR, "SSL_read Error: %s", ERR_error_string(e, ebuf));
-				e = ERR_get_error();
-			}
+			return -1;
+		case SSL_ERROR_SYSCALL:
+			return -1;
+		default:
+			emn_log(LOG_ERR, "SSL_read Error: %s", ERR_reason_error_string(ERR_get_error()));
 			errno = EPROTO;
+			return -1;
 		}
 	}
-	return (ssize_t)ret;
+	return (ssize_t)nread;
 }
 
 ssize_t emn_ssl_write(SSL *ssl, void *buf, size_t count)
 {
 	int ret = SSL_write(ssl, buf, count);
 	if(ret < 0) {
-		int err = SSL_get_error(ssl, ret);	
-		if(err == SSL_ERROR_WANT_READ) {
+		int err = SSL_get_error(ssl, ret);
+
+		switch(err) {
+		case SSL_ERROR_WANT_READ:
+		case SSL_ERROR_WANT_WRITE:
 			errno = EAGAIN;
-		} else if (err == SSL_ERROR_WANT_WRITE) {
-			errno = EAGAIN;			
-		} else if (err != SSL_ERROR_SYSCALL) {
-			char ebuf[256];
-			unsigned long e = ERR_get_error();
-			
-			while(e) {
-				emn_log(LOG_ERR, "SSL_write Error: %s", ERR_error_string(e, ebuf));
-				e = ERR_get_error();
-			}
+			return -1;
+		case SSL_ERROR_SYSCALL:
+			return -1;
+		case SSL_ERROR_SSL:
+			emn_log(LOG_ERR, "SSL_read Error: %s", ERR_reason_error_string(ERR_get_error()));
 			errno = EPROTO;
+			return -1;
 		}
 	}
 	return (ssize_t)ret;
@@ -174,23 +161,23 @@ int emn_ssl_accept(struct emn_client *cli)
 
 ssize_t emn_ssl_read(WOLFSSL *ssl, void *buf, size_t count)
 {
-	int ret = wolfSSL_read(ssl, buf, count);
-	if(ret < 0) {
-		int err = wolfSSL_get_error(ssl, ret);
-		if(err == SSL_ERROR_WANT_READ)
+	int nread = wolfSSL_read(ssl, buf, count);
+	if(nread < 0) {
+		int err = wolfSSL_get_error(ssl, nread);
+
+		switch(err) {
+		case SSL_ERROR_ZERO_RETURN: /* no more data */
+		case SSL_ERROR_WANT_READ:
+		case SSL_ERROR_WANT_WRITE:	/* there's data pending, re-invoke wolfSSL_read() */
 			errno = EAGAIN;
-		else if (err == SSL_ERROR_WANT_WRITE)
-			errno = EAGAIN;
-		else {
-			if (err == SOCKET_PEER_CLOSED_E) {
-				ret = 0;
-			} else {
-				emn_log(LOG_ERR, "wolfSSL_read Error: %s", wolfSSL_ERR_reason_error_string(err));
-				errno = EPROTO;
-			}
+			return -1;
+		default:
+			emn_log(LOG_ERR, "wolfSSL_read Error: %d:%s", errno, wolfSSL_ERR_reason_error_string(err));
+			errno = EPROTO;
+			return -1;
 		}
 	}
-	return (ssize_t)ret;
+	return (ssize_t)nread;
 }
 
 ssize_t emn_ssl_write(WOLFSSL *ssl, void *buf, size_t count)
@@ -198,13 +185,16 @@ ssize_t emn_ssl_write(WOLFSSL *ssl, void *buf, size_t count)
 	int ret = wolfSSL_write(ssl, buf, count);
 	if(ret < 0) {
 		int err = wolfSSL_get_error(ssl, ret);
-		if(err == SSL_ERROR_WANT_READ) {
+
+		switch(err) {
+		case SSL_ERROR_WANT_READ:
+		case SSL_ERROR_WANT_WRITE:	/* there's data pending, re-invoke wolfSSL_write() */
 			errno = EAGAIN;
-		} else if (err == SSL_ERROR_WANT_WRITE) {
-			errno = EAGAIN;
-		} else {	
-			emn_log(LOG_ERR, "wolfSSL_write Error: %s", wolfSSL_ERR_reason_error_string(err));
+			return -1;
+		default:
+			emn_log(LOG_ERR, "wolfSSL_write Error: %d:%s", errno, wolfSSL_ERR_reason_error_string(err));
 			errno = EPROTO;
+			return -1;
 		}
 	}
 	return (ssize_t)ret;
