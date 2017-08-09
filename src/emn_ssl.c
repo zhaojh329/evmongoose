@@ -51,6 +51,23 @@ err:
 	SSL_CTX_free(ctx);
 	return NULL;
 }
+
+int emn_ssl_accept(struct emn_client *cli)
+{
+	cli->ssl = SSL_new(cli->srv->ssl_ctx);
+	if (!cli->ssl)
+		return -1;
+
+	SSL_set_fd(cli->ssl, cli->sock);
+
+	if (!SSL_accept(cli->ssl)) {
+		emn_log(LOG_ERR, "SSL_accept failed");
+		return -1;
+	}
+
+	return 0;
+}
+
 #elif (EMN_USE_CYASSL)
 WOLFSSL_CTX *emn_ssl_init(const char *cert, const char *key, int type)
 {
@@ -91,4 +108,16 @@ err:
 	wolfSSL_Cleanup();
 	return NULL;
 }
+
+int emn_ssl_accept(struct emn_client *cli)
+{
+	cli->ssl = wolfSSL_new(cli->srv->ssl_ctx);
+	if (!cli->ssl)
+		return -1;
+
+	wolfSSL_set_fd(cli->ssl, cli->sock);
+
+	return 0;
+}
+
 #endif

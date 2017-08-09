@@ -36,4 +36,6 @@ static inline ssize_t emn_ssl_write(WOLFSSL *ssl, void *buf, size_t count)
 
 #endif
 
+int emn_ssl_accept(struct emn_client *cli);
+
 #endif

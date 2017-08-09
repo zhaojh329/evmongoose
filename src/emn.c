@@ -69,7 +69,10 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 		/* Orderly shutdown of the socket, try flushing output. */
 		cli->flags |= EMN_FLAGS_SEND_AND_CLOSE;
 	} else {
-		cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
+		if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+			emn_log(LOG_ERR, "emn: read error:%s", strerror(errno));
+			cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
+		}
 	}
 
 	ev_io_start(loop, &cli->iow);
@@ -160,26 +163,8 @@ static void ev_accept_cb(struct ev_loop *loop, ev_io *w, int revents)
 
 #if (EMN_SSL_ENABLED)
 	if (srv->flags & EMN_FLAGS_SSL) {
-#if (EMN_USE_OPENSSL)		
-		cli->ssl = SSL_new(srv->ssl_ctx);
-#elif (EMN_USE_CYASSL)
-		cli->ssl = wolfSSL_new(srv->ssl_ctx);
-#endif
-		if (!cli->ssl)
+		if (emn_ssl_accept(cli) < 0)
 			goto err;
-		
-#if (EMN_USE_OPENSSL)
-		SSL_set_fd(cli->ssl, cli->sock);
-#elif (EMN_USE_CYASSL)
-		wolfSSL_set_fd(cli->ssl, cli->sock);
-#endif
-
-#if (EMN_USE_OPENSSL)
-		if (!SSL_accept(cli->ssl)) {
-			emn_log(LOG_ERR, "SSL_accept failed");
-			goto err;
-		}
-#endif
 		cli->flags |= EMN_FLAGS_SSL;
 	}
 #endif
