@@ -115,22 +115,16 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 			fb = mmap(0, st.st_size, PROT_READ, MAP_PRIVATE, cli->send_fd, 0);
 			close(cli->send_fd);
 			cli->send_fd = -1;
+
 			
-			if (cli->flags & EMN_FLAGS_SSL) {
-#if (EMN_USE_OPENSSL)				
-				if (SSL_write(cli->ssl, fb, st.st_size) < 0) {
-#elif (EMN_USE_CYASSL)
-				if (wolfSSL_write(cli->ssl, fb, st.st_size) < 0) {
-#endif					
-					emn_log(LOG_ERR, "SSL_write failed");
-					cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
-				}
-			} else {
-				if (write(w->fd, fb, st.st_size) < 0) {
-					emn_log(LOG_ERR, "write failed");
-					cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
-				}
-			}
+#if (EMN_SSL_ENABLED)
+			if (cli->flags & EMN_FLAGS_SSL)
+				len = emn_ssl_write(cli->ssl, fb, st.st_size);
+			else
+#endif
+				len = write(w->fd, fb, st.st_size);
+			if (len < 0)
+				cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
 		}
 
 		if ((cli->flags & EMN_FLAGS_SEND_AND_CLOSE) || (cli->flags & EMN_FLAGS_CLOSE_IMMEDIATELY))
