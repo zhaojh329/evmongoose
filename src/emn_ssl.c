@@ -172,7 +172,7 @@ ssize_t emn_ssl_read(WOLFSSL *ssl, void *buf, size_t count)
 			errno = EAGAIN;
 			return -1;
 		default:
-			emn_log(LOG_ERR, "wolfSSL_read Error: %d:%s", errno, wolfSSL_ERR_reason_error_string(err));
+			emn_log(LOG_ERR, "wolfSSL_read Error: %s", wolfSSL_ERR_reason_error_string(err));
 			errno = EPROTO;
 			return -1;
 		}
@@ -192,7 +192,7 @@ ssize_t emn_ssl_write(WOLFSSL *ssl, void *buf, size_t count)
 			errno = EAGAIN;
 			return -1;
 		default:
-			emn_log(LOG_ERR, "wolfSSL_write Error: %d:%s", errno, wolfSSL_ERR_reason_error_string(err));
+			emn_log(LOG_ERR, "wolfSSL_write Error: %s", wolfSSL_ERR_reason_error_string(err));
 			errno = EPROTO;
 			return -1;
 		}
