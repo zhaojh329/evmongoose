@@ -45,31 +45,6 @@ static inline int check_connect(struct emn_client *cli)
 	return 0;
 }
 
-#if (EMN_SSL_ENABLED)
-#if (EMN_USE_OPENSSL)
-static inline ssize_t emn_ssl_read(SSL *ssl, void *buf, size_t count)
-{
-	return SSL_read(ssl, buf, count);
-}
-
-static inline ssize_t emn_ssl_write(SSL *ssl, void *buf, size_t count)
-{
-	return SSL_write(ssl, buf, count);
-}
-
-#elif (EMN_USE_CYASSL)
-static inline ssize_t emn_ssl_read(WOLFSSL *ssl, void *buf, size_t count)
-{
-	return wolfSSL_read(ssl, buf, count);
-}
-
-static inline ssize_t emn_ssl_write(WOLFSSL *ssl, void *buf, size_t count)
-{
-	return wolfSSL_write(ssl, buf, count);
-}
-#endif
-#endif
-
 static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 {
 	ssize_t len;
