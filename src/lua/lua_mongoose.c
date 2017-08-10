@@ -554,6 +554,9 @@ static int lua_mg_resolve_async(lua_State *L)
 
 		lua_getfield(L, 4, "timeout");
 		opts.timeout = lua_tointeger(L, -1);
+
+		lua_getfield(L, 4, "nameserver");
+		opts.nameserver_url = lua_tointeger(L, -1);
 	}
 
 	mg_resolve_async_opt(luaL_checkudata(L, 1, EVMONGOOSE_MT), domain, MG_DNS_A_RECORD, dns_resolve_cb, dns, opts);

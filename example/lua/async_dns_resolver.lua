@@ -22,6 +22,7 @@ local domain = arg[1] or "www.baidu.com"
 
 -- max_retries: defaults to 5
 -- timeout:		in seconds; defaults to 5
+-- nameserver:	"udp://114.114.114.114:53";
 mgr:dns_resolve_async(dns_resolve_cb, domain, {max_retries = 1, timeout = 2})
 
 ev.Signal.new(function(loop, sig, revents)
