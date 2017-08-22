@@ -740,6 +740,12 @@ static int lua_mg_get_evdata(lua_State *L)
 			lua_setfield(L, -2, "mid");
 			break;
 		}
+	case MG_EV_MQTT_PUBACK: {
+			struct mg_mqtt_message *msg = (struct mg_mqtt_message *)lcon->ev_data;
+			lua_pushinteger(L, msg->message_id);
+			lua_setfield(L, -2, "mid");
+			break;
+		}
 	}
 
 	return 1;
