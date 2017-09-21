@@ -44,7 +44,8 @@ int main(int argc, char **argv)
 	ev_signal_start(loop, &sig_watcher);
 	
 	emn_resolve(loop, name, resolve_handler, NULL);
-		
+	emn_resolve_single(loop, "sina.com", resolve_handler, NULL);
+	
 	ev_run(loop, 0);
 
 	printf("exit...\n");
