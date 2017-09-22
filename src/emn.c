@@ -35,11 +35,13 @@ static inline int check_connect(struct emn_client *cli)
 		cli->flags &= ~EMN_FLAGS_CONNECTING;
 		emn_call(cli, NULL, EMN_EV_CONNECT, &err);
 
-		if (err)
+		if (err) {
 			emn_client_destroy(cli);
-
+			return 1;
+		}
+		
 		ev_io_stop(cli->loop, &cli->iow);
-		return 1;
+		return 0;
 	}
 
 	return 0;
@@ -51,6 +53,7 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 	static struct ebuf ebuf;
 	struct emn_client *cli = (struct emn_client *)w->data;
 
+	printf("ev_read_cb\n");
 	if (check_connect(cli))
 		return;
 
@@ -83,7 +86,7 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 	struct emn_client *cli = (struct emn_client *)w->data;
 	struct ebuf *sbuf = &cli->sbuf;
 	ssize_t len = -1;
-
+	
 	if (check_connect(cli))
 		return;
 
@@ -92,6 +95,7 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 		len = emn_ssl_write(cli->ssl, sbuf->buf, sbuf->len);
 	else
 #endif
+	printf("ev_write_cb:%ld\n", sbuf->len);
 		len = write(w->fd, sbuf->buf, sbuf->len);	
 	if (len > 0)
 		ebuf_remove(sbuf, len);
@@ -132,7 +136,7 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 				cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
 			}
 		}
-
+		printf("ev_write_cb 22:%ld\n", sbuf->len);
 		if ((cli->flags & EMN_FLAGS_SEND_AND_CLOSE) || (cli->flags & EMN_FLAGS_CLOSE_IMMEDIATELY))
 			emn_client_destroy(cli);
 	}
@@ -471,6 +475,64 @@ struct emn_client *emn_connect(struct ev_loop *loop, const char *address, emn_ev
 err:
 	emn_client_destroy(cli);
 	return NULL;	
+}
+
+struct emn_client *emn_connect_http(struct ev_loop *loop, const char *url, emn_event_handler_t ev_handler)
+{
+	struct emn_client *cli = NULL;
+	struct http_parser_url parser_url;
+	char *addr = NULL;
+	const char *path = "/";
+	int path_len = 1;
+	
+	memset(&parser_url, 0, sizeof(parser_url));
+
+	if (http_parser_parse_url(url, strlen(url), 0, &parser_url)) {
+		emn_log(LOG_ERR, "invalid url[%s]", url);
+		return NULL;
+	} else {
+		if (parser_url.field_set & (1 << UF_SCHEMA))
+			printf("schema:%.*s\n", parser_url.field_data[UF_SCHEMA].len, url + parser_url.field_data[UF_SCHEMA].off);
+		
+		if (parser_url.field_set & (1 << UF_HOST)) {
+			int port = 80;
+
+			addr = calloc(1, parser_url.field_data[UF_HOST].len + 10);
+			if (!addr) {
+				emn_log(LOG_ERR, "alloc mem failed");
+				return NULL;
+			}
+
+			memcpy(addr, url + parser_url.field_data[UF_HOST].off, parser_url.field_data[UF_HOST].len);
+			
+			if (parser_url.field_set & (1 << UF_PORT))
+				port = parser_url.port;
+
+			snprintf(addr + parser_url.field_data[UF_HOST].len, 5, ":%d", port);
+		}
+		
+		if (parser_url.field_set & (1 << UF_PATH)) {
+			printf("path:%.*s\n", parser_url.field_data[UF_PATH].len, url + parser_url.field_data[UF_PATH].off);
+			path = url + parser_url.field_data[UF_PATH].off;
+			path_len = parser_url.field_data[UF_PATH].len;
+		}
+
+		if (parser_url.field_set & (1 << UF_QUERY))
+			printf("query:%.*s\n", parser_url.field_data[UF_QUERY].len, url + parser_url.field_data[UF_QUERY].off);
+	}
+
+	cli = emn_connect(loop, addr, ev_handler);
+	if (cli)
+		emn_cli_set_protocol_http(cli);
+
+	emn_printf(cli, "GET %.*s HTTP/1.1\r\n"
+					"Host: %s\r\n"
+					"\r\n",
+					path_len, path, addr);
+
+	free(addr);
+	
+	return cli;
 }
 
 void emn_server_destroy(struct emn_server *srv)

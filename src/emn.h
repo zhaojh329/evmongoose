@@ -75,7 +75,10 @@ struct emn_server *emn_bind_opt(struct ev_loop *loop, const char *address, emn_e
 /* De-initialises emn_server and release all resources associated with it */
 void emn_server_destroy(struct emn_server *srv);
 
+/* Connects to a remote host. */
 struct emn_client *emn_connect(struct ev_loop *loop, const char *address, emn_event_handler_t ev_handler);
+
+struct emn_client *emn_connect_http(struct ev_loop *loop, const char *url, emn_event_handler_t ev_handler);
 
 
 /* De-initialises emn_client and release all resources associated with it */

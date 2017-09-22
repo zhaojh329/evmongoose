@@ -53,6 +53,15 @@ struct emn_client;
 void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts);
 
 /*
+ * Attaches a built-in HTTP event handler to the given emn_server.
+ * The user-defined event handler will receive following extra events:
+ *
+ * - EMN_EV_HTTP_REPLY: The HTTP reply has arrived. Parsed HTTP request
+ *  is passed as 'struct http_message' through the handler's 'void *data' pointer.
+ */
+void emn_cli_set_protocol_http(struct emn_client *cli);
+
+/*
  * Searches and returns the header 'name' in parsed HTTP message 'hm'.
  * If header is not found, NULL is returned.
  * Example: struct emn_str *host = emn_get_http_header(hm, "Host");

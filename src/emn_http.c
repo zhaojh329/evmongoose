@@ -232,7 +232,7 @@ static int on_message_begin(http_parser *parser)
 	struct http_message *hm = (struct http_message *)cli->data;
 	struct emn_str *header_names = hm->header_names;
 	struct emn_str *header_values = hm->header_values;
-	
+
 	emn_str_init(&hm->url, NULL, 0);
 	emn_str_init(&hm->body, NULL, 0);
 	
@@ -332,7 +332,7 @@ static int on_message_complete(http_parser *parser)
 			emn_str_init(&hm->query, hm->url.p + url.field_data[UF_QUERY].off, url.field_data[UF_QUERY].len);
 	}
 		
-	emn_call(cli, NULL, EMN_EV_HTTP_REQUEST, hm);
+	emn_call(cli, NULL, cli->srv ? EMN_EV_HTTP_REQUEST : EMN_EV_HTTP_REPLY, hm);
 
 	return 0;
 }
@@ -356,15 +356,15 @@ static void http_timeout_cb(struct ev_loop *loop, ev_timer *w, int revents)
 
 static int emn_http_handler(struct emn_client *cli, int event, void *data)
 {
-	if (event == EMN_EV_ACCEPT) {
+	if (event == EMN_EV_ACCEPT || event == EMN_EV_CONNECT) {
 		struct http_message *hm = calloc(1, sizeof(struct http_message));
-		http_parser_init(&hm->parser, HTTP_REQUEST);
+		http_parser_init(&hm->parser, cli->srv ? HTTP_REQUEST : HTTP_RESPONSE);
 		hm->parser.data = cli;
 		cli->data = hm;
 
 		ev_timer_init(&cli->timer, http_timeout_cb, EMN_HTTP_TIMEOUT, 0);
 		cli->timer.data = cli;
-		ev_timer_start(cli->srv->loop, &cli->timer);
+		ev_timer_start(cli->loop, &cli->timer);
 	}
 
 	if (!emn_call(cli, cli->handler, event, data) && event == EMN_EV_HTTP_REQUEST)
@@ -374,7 +374,7 @@ static int emn_http_handler(struct emn_client *cli, int event, void *data)
 		size_t nparsed;
 		struct ebuf *rbuf = (struct ebuf *)data;
 		struct http_message *hm = (struct http_message *)cli->data;
-		
+
 		nparsed = http_parser_execute(&hm->parser, &parser_settings, rbuf->buf, rbuf->len);
 		if (nparsed != rbuf->len) {
 			emn_log(LOG_ERR, "%s", http_errno_description(HTTP_PARSER_ERRNO(&hm->parser)));
@@ -392,6 +392,12 @@ void emn_set_protocol_http(struct emn_server *srv, struct http_opts *opts)
 	srv->proto_handler = emn_http_handler;
 	srv->flags |= EMN_FLAGS_HTTP;
 	srv->opts = opts;
+}
+
+void emn_cli_set_protocol_http(struct emn_client *cli)
+{
+	cli->proto_handler = emn_http_handler;
+	cli->flags |= EMN_FLAGS_HTTP;
 }
 
 inline struct emn_str *emn_get_http_header(struct http_message *hm, const char *name)
