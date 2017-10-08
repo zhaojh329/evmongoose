@@ -362,6 +362,9 @@ static int emn_http_handler(struct emn_client *cli, int event, void *data)
 		hm->parser.data = cli;
 		cli->data = hm;
 
+		/* Stop timer for connect */
+		ev_timer_stop(cli->loop, &cli->timer);
+		
 		ev_timer_init(&cli->timer, http_timeout_cb, EMN_HTTP_TIMEOUT, 0);
 		cli->timer.data = cli;
 		ev_timer_start(cli->loop, &cli->timer);
