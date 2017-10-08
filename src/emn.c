@@ -53,7 +53,6 @@ static void ev_read_cb(struct ev_loop *loop, ev_io *w, int revents)
 	static struct ebuf ebuf;
 	struct emn_client *cli = (struct emn_client *)w->data;
 
-	printf("ev_read_cb\n");
 	if (check_connect(cli))
 		return;
 
@@ -95,8 +94,8 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 		len = emn_ssl_write(cli->ssl, sbuf->buf, sbuf->len);
 	else
 #endif
-	printf("ev_write_cb:%ld\n", sbuf->len);
-		len = write(w->fd, sbuf->buf, sbuf->len);	
+
+	len = write(w->fd, sbuf->buf, sbuf->len);	
 	if (len > 0)
 		ebuf_remove(sbuf, len);
 
@@ -136,7 +135,7 @@ static void ev_write_cb(struct ev_loop *loop, ev_io *w, int revents)
 				cli->flags |= EMN_FLAGS_CLOSE_IMMEDIATELY;
 			}
 		}
-		printf("ev_write_cb 22:%ld\n", sbuf->len);
+
 		if ((cli->flags & EMN_FLAGS_SEND_AND_CLOSE) || (cli->flags & EMN_FLAGS_CLOSE_IMMEDIATELY))
 			emn_client_destroy(cli);
 	}
