@@ -209,7 +209,7 @@ static int parse_address(const char *address, struct sockaddr_in *sin,
 	int ret = 1;
 	char *p;
 	const char *str;
-	uint16_t port = 0;
+	int port = 0;
 
 	assert(address);
 
@@ -483,6 +483,8 @@ struct emn_client *emn_connect_http(struct ev_loop *loop, const char *url, emn_e
 	char *addr = NULL;
 	const char *path = "/";
 	int path_len = 1;
+	const char *query = NULL;
+	int query_len = 0;
 	
 	memset(&parser_url, 0, sizeof(parser_url));
 
@@ -490,12 +492,21 @@ struct emn_client *emn_connect_http(struct ev_loop *loop, const char *url, emn_e
 		emn_log(LOG_ERR, "invalid url[%s]", url);
 		return NULL;
 	} else {
-		if (parser_url.field_set & (1 << UF_SCHEMA))
-			printf("schema:%.*s\n", parser_url.field_data[UF_SCHEMA].len, url + parser_url.field_data[UF_SCHEMA].off);
+		int port = -1;
+		
+		if (parser_url.field_set & (1 << UF_SCHEMA)) {		
+			if (!strncmp(url + parser_url.field_data[UF_SCHEMA].off, "http", 4))
+				port = 80;
+			else if (!strncmp(url + parser_url.field_data[UF_SCHEMA].off, "https", 5))
+				port = 443;
+			else {
+				emn_log(LOG_ERR, "invalid schema[%.*s]", 
+					(int)parser_url.field_data[UF_SCHEMA].len, url + parser_url.field_data[UF_SCHEMA].off);
+				return NULL;
+			}
+		}
 		
 		if (parser_url.field_set & (1 << UF_HOST)) {
-			int port = 80;
-
 			addr = calloc(1, parser_url.field_data[UF_HOST].len + 10);
 			if (!addr) {
 				emn_log(LOG_ERR, "alloc mem failed");
@@ -507,27 +518,30 @@ struct emn_client *emn_connect_http(struct ev_loop *loop, const char *url, emn_e
 			if (parser_url.field_set & (1 << UF_PORT))
 				port = parser_url.port;
 
-			snprintf(addr + parser_url.field_data[UF_HOST].len, 5, ":%d", port);
+			snprintf(addr + parser_url.field_data[UF_HOST].len, 10, ":%d", port);
 		}
 		
 		if (parser_url.field_set & (1 << UF_PATH)) {
-			printf("path:%.*s\n", parser_url.field_data[UF_PATH].len, url + parser_url.field_data[UF_PATH].off);
 			path = url + parser_url.field_data[UF_PATH].off;
 			path_len = parser_url.field_data[UF_PATH].len;
 		}
 
-		if (parser_url.field_set & (1 << UF_QUERY))
-			printf("query:%.*s\n", parser_url.field_data[UF_QUERY].len, url + parser_url.field_data[UF_QUERY].off);
+		if (parser_url.field_set & (1 << UF_QUERY)) {
+			query = url + parser_url.field_data[UF_QUERY].off;
+			query_len = parser_url.field_data[UF_QUERY].len;
+		}
 	}
 
 	cli = emn_connect(loop, addr, ev_handler);
-	if (cli)
+	if (cli) {
 		emn_cli_set_protocol_http(cli);
 
-	emn_printf(cli, "GET %.*s HTTP/1.1\r\n"
+		emn_printf(cli, "GET %.*s%s%.*s HTTP/1.1\r\n"
 					"Host: %s\r\n"
 					"\r\n",
-					path_len, path, addr);
+					path_len, path, query ? "?" : "", query_len, query,
+					addr);
+	}
 
 	free(addr);
 	
