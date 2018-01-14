@@ -1,3 +1,9 @@
+[libuhttpd]: https://github.com/zhaojh329/libuhttpd
+[libuwsc]: https://github.com/zhaojh329/libuwsc
+[libumqttc]: https://github.com/zhaojh329/libumqttc
+
+# DEPRECATED.  Replaced by [libuhttpd], [libuwsc], [libumqttc] 
+
 # Evmongoose([中文](https://github.com/zhaojh329/evmongoose/blob/master/README_ZH.md))([github](https://github.com/zhaojh329/evmongoose))
 
 ![](https://img.shields.io/badge/license-GPLV3-brightgreen.svg?style=plastic "License")
